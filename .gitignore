@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data (generated)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Models (generated)
+models/*.pkl
+models/*.model
+models/embeddings/
+
+# Logs
+logs/*.log
+logs/*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/

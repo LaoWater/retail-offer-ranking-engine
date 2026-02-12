@@ -1,0 +1,29 @@
+# Metro Personalized Offers Recommender - Dependencies
+
+# Data & ML
+pandas>=2.1.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+lightgbm>=4.2.0
+joblib>=1.3.0
+
+# API
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+
+# Dashboard
+streamlit>=1.30.0
+plotly>=5.18.0
+
+# Utilities
+python-dateutil>=2.8.0
+tqdm>=4.66.0
+
+# Monitoring
+scipy>=1.12.0
+
+# Development
+pytest>=7.4.0
+pytest-cov>=4.1.0
+httpx>=0.26.0

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\baciu\\\\Desktop\\\\Neo Training\\\\retail-offer-ranking-engine\" log --oneline --all)",
+      "Bash(python:*)",
+      "Bash(pip install:*)"
+    ]
+  }
+}
