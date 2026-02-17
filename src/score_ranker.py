@@ -45,13 +45,15 @@ def score_candidates(model, run_date, conn):
     cust_feat_cols = [
         "customer_id", "recency_days", "frequency", "monetary",
         "promo_affinity", "avg_basket_size", "category_entropy", "avg_discount_depth",
+        "avg_basket_quantity", "tier2_purchase_ratio", "tier3_purchase_ratio",
+        "fresh_category_ratio",
     ]
     cust_feats = cust_feats[[c for c in cust_feat_cols if c in cust_feats.columns]]
 
     offer_feats = pd.read_sql("SELECT * FROM offer_features", conn)
     offer_feat_cols = [
         "offer_id", "discount_depth", "margin_impact",
-        "days_until_expiry", "historical_redemption_rate",
+        "days_until_expiry", "historical_redemption_rate", "is_own_brand",
     ]
     offer_feats = offer_feats[[c for c in offer_feat_cols if c in offer_feats.columns]]
 

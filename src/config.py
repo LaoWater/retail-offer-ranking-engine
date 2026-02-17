@@ -1,6 +1,9 @@
 """
-Configuration for Metro Personalized Offers Recommender.
+Configuration for Metro Romania Personalized Offers Recommender.
 Single source of truth for all paths, hyperparameters, and constants.
+
+Metro is a B2B cash-and-carry wholesaler. Every customer is a registered
+business (HoReCa, Trader, SCO, Freelancer). All prices in RON.
 """
 
 from pathlib import Path
@@ -32,218 +35,688 @@ TARGET_ORDER_ITEMS = 2_000_000
 TARGET_IMPRESSIONS = 500_000
 TARGET_REDEMPTION_RATE = 0.05  # 5% of impressions
 
-# Segment distribution
-SEGMENT_DIST = {
-    "budget": 0.40,
-    "premium": 0.20,
-    "family": 0.30,
-    "horeca": 0.10,
+# ---------------------------------------------------------------------------
+# Business type distribution (B2B only — no consumers)
+# ---------------------------------------------------------------------------
+BUSINESS_TYPE_DIST = {
+    "horeca": 0.50,
+    "trader": 0.30,
+    "sco": 0.12,
+    "freelancer": 0.08,
 }
 
-# Loyalty tier distribution by segment
+BUSINESS_SUBTYPE_DIST = {
+    "horeca": {
+        "restaurant": 0.35,
+        "cafe_bar": 0.20,
+        "hotel": 0.10,
+        "catering": 0.12,
+        "fast_food": 0.10,
+        "bakery_pastry": 0.08,
+        "ghost_kitchen": 0.05,
+    },
+    "trader": {
+        "grocery_store": 0.45,
+        "convenience": 0.20,
+        "specialty_food": 0.15,
+        "liquor_store": 0.10,
+        "general_retail": 0.10,
+    },
+    "sco": {
+        "office": 0.35,
+        "hospital_clinic": 0.20,
+        "school_university": 0.20,
+        "canteen": 0.15,
+        "other_org": 0.10,
+    },
+    "freelancer": {
+        "independent_pro": 0.50,
+        "small_business": 0.50,
+    },
+}
+
+# Loyalty tier distribution by business type (classic/plus/star)
 LOYALTY_TIERS = {
-    "budget":  {"bronze": 0.70, "silver": 0.25, "gold": 0.05},
-    "premium": {"bronze": 0.10, "silver": 0.30, "gold": 0.60},
-    "family":  {"bronze": 0.30, "silver": 0.50, "gold": 0.20},
-    "horeca":  {"bronze": 0.40, "silver": 0.40, "gold": 0.20},
+    "horeca":     {"classic": 0.30, "plus": 0.45, "star": 0.25},
+    "trader":     {"classic": 0.50, "plus": 0.35, "star": 0.15},
+    "sco":        {"classic": 0.40, "plus": 0.40, "star": 0.20},
+    "freelancer": {"classic": 0.70, "plus": 0.25, "star": 0.05},
 }
 
-# 20 product categories with base frequency weights
+# ---------------------------------------------------------------------------
+# Business behavioral profiles (per subtype)
+# ---------------------------------------------------------------------------
+BUSINESS_PROFILES = {
+    # HoReCa subtypes
+    "restaurant": {
+        "purchase_freq_weekly": 3.5,
+        "basket_size_mean": 45,
+        "basket_size_std": 15,
+        "promo_affinity": 0.25,
+        "price_sensitivity": 0.45,
+        "fresh_ratio": 0.65,
+        "email_consent_rate": 0.70,
+        "sms_consent_rate": 0.55,
+        "app_registered_rate": 0.40,
+    },
+    "cafe_bar": {
+        "purchase_freq_weekly": 3.0,
+        "basket_size_mean": 30,
+        "basket_size_std": 10,
+        "promo_affinity": 0.30,
+        "price_sensitivity": 0.50,
+        "fresh_ratio": 0.45,
+        "email_consent_rate": 0.65,
+        "sms_consent_rate": 0.50,
+        "app_registered_rate": 0.35,
+    },
+    "hotel": {
+        "purchase_freq_weekly": 4.0,
+        "basket_size_mean": 60,
+        "basket_size_std": 20,
+        "promo_affinity": 0.15,
+        "price_sensitivity": 0.30,
+        "fresh_ratio": 0.55,
+        "email_consent_rate": 0.80,
+        "sms_consent_rate": 0.40,
+        "app_registered_rate": 0.50,
+    },
+    "catering": {
+        "purchase_freq_weekly": 2.5,
+        "basket_size_mean": 70,
+        "basket_size_std": 25,
+        "promo_affinity": 0.35,
+        "price_sensitivity": 0.55,
+        "fresh_ratio": 0.60,
+        "email_consent_rate": 0.75,
+        "sms_consent_rate": 0.45,
+        "app_registered_rate": 0.30,
+    },
+    "fast_food": {
+        "purchase_freq_weekly": 4.0,
+        "basket_size_mean": 35,
+        "basket_size_std": 12,
+        "promo_affinity": 0.40,
+        "price_sensitivity": 0.60,
+        "fresh_ratio": 0.40,
+        "email_consent_rate": 0.60,
+        "sms_consent_rate": 0.55,
+        "app_registered_rate": 0.45,
+    },
+    "bakery_pastry": {
+        "purchase_freq_weekly": 5.0,
+        "basket_size_mean": 25,
+        "basket_size_std": 8,
+        "promo_affinity": 0.20,
+        "price_sensitivity": 0.40,
+        "fresh_ratio": 0.70,
+        "email_consent_rate": 0.55,
+        "sms_consent_rate": 0.45,
+        "app_registered_rate": 0.25,
+    },
+    "ghost_kitchen": {
+        "purchase_freq_weekly": 4.5,
+        "basket_size_mean": 40,
+        "basket_size_std": 15,
+        "promo_affinity": 0.35,
+        "price_sensitivity": 0.55,
+        "fresh_ratio": 0.50,
+        "email_consent_rate": 0.80,
+        "sms_consent_rate": 0.60,
+        "app_registered_rate": 0.70,
+    },
+    # Trader subtypes
+    "grocery_store": {
+        "purchase_freq_weekly": 2.0,
+        "basket_size_mean": 55,
+        "basket_size_std": 20,
+        "promo_affinity": 0.55,
+        "price_sensitivity": 0.75,
+        "fresh_ratio": 0.35,
+        "email_consent_rate": 0.50,
+        "sms_consent_rate": 0.60,
+        "app_registered_rate": 0.20,
+    },
+    "convenience": {
+        "purchase_freq_weekly": 2.5,
+        "basket_size_mean": 40,
+        "basket_size_std": 15,
+        "promo_affinity": 0.50,
+        "price_sensitivity": 0.70,
+        "fresh_ratio": 0.30,
+        "email_consent_rate": 0.45,
+        "sms_consent_rate": 0.55,
+        "app_registered_rate": 0.25,
+    },
+    "specialty_food": {
+        "purchase_freq_weekly": 1.5,
+        "basket_size_mean": 35,
+        "basket_size_std": 12,
+        "promo_affinity": 0.30,
+        "price_sensitivity": 0.50,
+        "fresh_ratio": 0.45,
+        "email_consent_rate": 0.60,
+        "sms_consent_rate": 0.40,
+        "app_registered_rate": 0.30,
+    },
+    "liquor_store": {
+        "purchase_freq_weekly": 1.5,
+        "basket_size_mean": 30,
+        "basket_size_std": 10,
+        "promo_affinity": 0.45,
+        "price_sensitivity": 0.65,
+        "fresh_ratio": 0.05,
+        "email_consent_rate": 0.40,
+        "sms_consent_rate": 0.50,
+        "app_registered_rate": 0.15,
+    },
+    "general_retail": {
+        "purchase_freq_weekly": 1.0,
+        "basket_size_mean": 45,
+        "basket_size_std": 18,
+        "promo_affinity": 0.50,
+        "price_sensitivity": 0.70,
+        "fresh_ratio": 0.20,
+        "email_consent_rate": 0.45,
+        "sms_consent_rate": 0.50,
+        "app_registered_rate": 0.20,
+    },
+    # SCO subtypes
+    "office": {
+        "purchase_freq_weekly": 0.8,
+        "basket_size_mean": 25,
+        "basket_size_std": 10,
+        "promo_affinity": 0.20,
+        "price_sensitivity": 0.40,
+        "fresh_ratio": 0.10,
+        "email_consent_rate": 0.70,
+        "sms_consent_rate": 0.30,
+        "app_registered_rate": 0.40,
+    },
+    "hospital_clinic": {
+        "purchase_freq_weekly": 1.5,
+        "basket_size_mean": 40,
+        "basket_size_std": 15,
+        "promo_affinity": 0.15,
+        "price_sensitivity": 0.30,
+        "fresh_ratio": 0.25,
+        "email_consent_rate": 0.65,
+        "sms_consent_rate": 0.25,
+        "app_registered_rate": 0.35,
+    },
+    "school_university": {
+        "purchase_freq_weekly": 1.0,
+        "basket_size_mean": 50,
+        "basket_size_std": 20,
+        "promo_affinity": 0.25,
+        "price_sensitivity": 0.55,
+        "fresh_ratio": 0.30,
+        "email_consent_rate": 0.60,
+        "sms_consent_rate": 0.30,
+        "app_registered_rate": 0.30,
+    },
+    "canteen": {
+        "purchase_freq_weekly": 3.0,
+        "basket_size_mean": 55,
+        "basket_size_std": 18,
+        "promo_affinity": 0.30,
+        "price_sensitivity": 0.50,
+        "fresh_ratio": 0.55,
+        "email_consent_rate": 0.55,
+        "sms_consent_rate": 0.35,
+        "app_registered_rate": 0.25,
+    },
+    "other_org": {
+        "purchase_freq_weekly": 0.5,
+        "basket_size_mean": 20,
+        "basket_size_std": 8,
+        "promo_affinity": 0.20,
+        "price_sensitivity": 0.45,
+        "fresh_ratio": 0.15,
+        "email_consent_rate": 0.50,
+        "sms_consent_rate": 0.25,
+        "app_registered_rate": 0.20,
+    },
+    # Freelancer subtypes
+    "independent_pro": {
+        "purchase_freq_weekly": 0.5,
+        "basket_size_mean": 12,
+        "basket_size_std": 5,
+        "promo_affinity": 0.40,
+        "price_sensitivity": 0.60,
+        "fresh_ratio": 0.20,
+        "email_consent_rate": 0.55,
+        "sms_consent_rate": 0.40,
+        "app_registered_rate": 0.45,
+    },
+    "small_business": {
+        "purchase_freq_weekly": 0.8,
+        "basket_size_mean": 18,
+        "basket_size_std": 7,
+        "promo_affinity": 0.45,
+        "price_sensitivity": 0.65,
+        "fresh_ratio": 0.15,
+        "email_consent_rate": 0.60,
+        "sms_consent_rate": 0.45,
+        "app_registered_rate": 0.40,
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Product categories (21 wholesale categories: 13 food, 8 non-food)
+# ---------------------------------------------------------------------------
 CATEGORIES = [
-    ("dairy", 0.12),
-    ("produce", 0.11),
-    ("bakery", 0.09),
-    ("meat", 0.08),
-    ("beverages", 0.08),
-    ("frozen", 0.07),
-    ("snacks", 0.06),
-    ("household", 0.06),
-    ("personal_care", 0.05),
-    ("canned_goods", 0.04),
-    ("condiments", 0.04),
-    ("seafood", 0.03),
-    ("deli", 0.03),
-    ("baby", 0.03),
-    ("pet", 0.02),
-    ("alcohol", 0.02),
-    ("organic", 0.02),
-    ("international", 0.02),
-    ("bulk", 0.02),
-    ("seasonal", 0.01),
+    # Food (~70%)
+    ("meat_poultry", 0.10),
+    ("dairy_eggs", 0.09),
+    ("fruits_vegetables", 0.09),
+    ("beverages_non_alcoholic", 0.07),
+    ("bakery_pastry", 0.06),
+    ("frozen_foods", 0.06),
+    ("grocery_staples", 0.06),
+    ("beverages_alcoholic", 0.05),
+    ("seafood", 0.04),
+    ("confectionery_snacks", 0.04),
+    ("condiments_spices", 0.03),
+    ("deli_charcuterie", 0.03),
+    ("coffee_tea", 0.03),
+    # Non-Food (~30%)
+    ("cleaning_detergents", 0.05),
+    ("kitchen_utensils_tableware", 0.04),
+    ("horeca_equipment", 0.04),
+    ("paper_packaging", 0.03),
+    ("personal_care_hygiene", 0.03),
+    ("household_goods", 0.02),
+    ("office_supplies", 0.02),
+    ("electronics_small_appliances", 0.02),
 ]
 
 CATEGORY_NAMES = [c[0] for c in CATEGORIES]
 CATEGORY_WEIGHTS = [c[1] for c in CATEGORIES]
 
-# Subcategories per category
+# Fresh categories (perishable)
+FRESH_CATEGORIES = {
+    "meat_poultry", "dairy_eggs", "fruits_vegetables",
+    "bakery_pastry", "seafood", "deli_charcuterie",
+}
+
+# Subcategories per category (Romanian-specific items)
 SUBCATEGORIES = {
-    "dairy": ["milk", "cheese", "yogurt", "butter", "cream"],
-    "produce": ["fruits", "vegetables", "herbs", "salads"],
-    "bakery": ["bread", "pastries", "cakes", "rolls"],
-    "meat": ["beef", "chicken", "pork", "lamb", "sausages"],
-    "beverages": ["water", "juice", "soda", "coffee", "tea"],
-    "frozen": ["frozen_meals", "ice_cream", "frozen_veg", "frozen_pizza"],
-    "snacks": ["chips", "crackers", "nuts", "cookies", "candy"],
-    "household": ["cleaning", "paper", "storage", "laundry"],
-    "personal_care": ["shampoo", "soap", "dental", "skincare"],
-    "canned_goods": ["beans", "soup", "tomatoes", "tuna", "vegetables"],
-    "condiments": ["ketchup", "mustard", "mayo", "sauces", "spices"],
-    "seafood": ["fish", "shrimp", "crab", "salmon"],
-    "deli": ["ham", "salami", "cheese_deli", "olives"],
-    "baby": ["formula", "diapers", "baby_food", "wipes"],
-    "pet": ["dog_food", "cat_food", "treats", "accessories"],
-    "alcohol": ["beer", "wine", "spirits", "mixers"],
-    "organic": ["organic_produce", "organic_dairy", "organic_grains"],
-    "international": ["asian", "mexican", "italian", "middle_eastern"],
-    "bulk": ["rice", "flour", "oil", "sugar", "pasta"],
-    "seasonal": ["holiday", "bbq", "summer", "winter"],
+    "meat_poultry": ["beef", "pork", "chicken", "lamb", "sausages", "mici", "costita", "ceafa"],
+    "dairy_eggs": ["milk", "cheese_telemea", "cheese_cascaval", "branza", "yogurt", "butter", "cream", "eggs", "smantana"],
+    "fruits_vegetables": ["fruits", "vegetables", "herbs", "salads", "potatoes", "onions", "root_vegetables"],
+    "beverages_non_alcoholic": ["water", "juice", "soft_drinks", "energy_drinks", "mineral_water"],
+    "bakery_pastry": ["bread", "rolls", "pastries", "covrigi", "frozen_prebaked", "paine_alba", "paine_integrala"],
+    "frozen_foods": ["frozen_vegetables", "frozen_meals", "ice_cream", "frozen_proteins", "frozen_pizza"],
+    "grocery_staples": ["rice", "pasta", "flour", "sunflower_oil", "sugar", "polenta_mamaliga", "canned_goods", "conserve"],
+    "beverages_alcoholic": ["beer", "wine", "spirits_tuica", "spirits_palinca", "vodka", "whisky"],
+    "seafood": ["crap", "pastrav", "salmon", "shrimp", "preserved_fish"],
+    "confectionery_snacks": ["chocolate", "candy", "chips", "crackers", "nuts", "biscuits"],
+    "condiments_spices": ["ketchup", "mustard", "mayo", "sauces", "spices", "bors_liquid"],
+    "deli_charcuterie": ["ham", "salami_sibiu", "slanina", "olives", "muraturi", "sunca_praga"],
+    "coffee_tea": ["ground_coffee", "whole_bean", "pods", "instant", "tea"],
+    "cleaning_detergents": ["industrial_cleaning", "dishwashing", "laundry", "disinfectants", "floor_care"],
+    "kitchen_utensils_tableware": ["pots_pans", "knives", "cutting_boards", "plates", "glasses", "serving"],
+    "horeca_equipment": ["commercial_ovens", "refrigerators", "display_cases", "buffet_systems", "prep_equipment"],
+    "paper_packaging": ["napkins", "takeaway_containers", "foil", "cling_wrap", "bags", "cups"],
+    "personal_care_hygiene": ["soap", "shampoo", "dental", "skincare", "hand_sanitizer"],
+    "household_goods": ["storage", "textiles_aprons", "work_clothing", "table_linens"],
+    "office_supplies": ["paper", "stationery", "printer_supplies", "filing"],
+    "electronics_small_appliances": ["small_electronics", "calculators", "pos_accessories", "lighting"],
 }
 
-# Base price ranges by category (min, max in euros)
+# Base price ranges by category (RON, wholesale quantities)
 CATEGORY_PRICE_RANGE = {
-    "dairy": (0.80, 8.00),
-    "produce": (0.50, 6.00),
-    "bakery": (0.60, 5.00),
-    "meat": (3.00, 25.00),
-    "beverages": (0.50, 8.00),
-    "frozen": (1.50, 10.00),
-    "snacks": (0.80, 6.00),
-    "household": (1.00, 15.00),
-    "personal_care": (1.50, 12.00),
-    "canned_goods": (0.60, 4.00),
-    "condiments": (0.80, 6.00),
-    "seafood": (4.00, 30.00),
-    "deli": (2.00, 12.00),
-    "baby": (3.00, 25.00),
-    "pet": (2.00, 20.00),
-    "alcohol": (1.50, 40.00),
-    "organic": (1.50, 15.00),
-    "international": (1.00, 10.00),
-    "bulk": (1.00, 8.00),
-    "seasonal": (2.00, 20.00),
+    "meat_poultry": (15.0, 120.0),
+    "dairy_eggs": (4.0, 80.0),
+    "fruits_vegetables": (3.0, 40.0),
+    "beverages_non_alcoholic": (2.5, 35.0),
+    "bakery_pastry": (3.0, 25.0),
+    "frozen_foods": (8.0, 60.0),
+    "grocery_staples": (5.0, 45.0),
+    "beverages_alcoholic": (8.0, 200.0),
+    "seafood": (20.0, 150.0),
+    "confectionery_snacks": (4.0, 30.0),
+    "condiments_spices": (4.0, 30.0),
+    "deli_charcuterie": (10.0, 60.0),
+    "coffee_tea": (15.0, 80.0),
+    "cleaning_detergents": (5.0, 75.0),
+    "kitchen_utensils_tableware": (10.0, 200.0),
+    "horeca_equipment": (200.0, 5000.0),
+    "paper_packaging": (5.0, 50.0),
+    "personal_care_hygiene": (5.0, 60.0),
+    "household_goods": (10.0, 150.0),
+    "office_supplies": (5.0, 80.0),
+    "electronics_small_appliances": (30.0, 500.0),
 }
 
-# Margin ranges by category (min, max as fraction)
+# Margin ranges by category (fraction)
 CATEGORY_MARGIN_RANGE = {
-    "dairy": (0.08, 0.20),
-    "produce": (0.10, 0.30),
-    "bakery": (0.15, 0.40),
-    "meat": (0.06, 0.18),
-    "beverages": (0.12, 0.35),
-    "frozen": (0.10, 0.25),
-    "snacks": (0.15, 0.40),
-    "household": (0.12, 0.30),
-    "personal_care": (0.15, 0.35),
-    "canned_goods": (0.10, 0.25),
-    "condiments": (0.12, 0.30),
+    "meat_poultry": (0.06, 0.18),
+    "dairy_eggs": (0.08, 0.20),
+    "fruits_vegetables": (0.10, 0.30),
+    "beverages_non_alcoholic": (0.12, 0.35),
+    "bakery_pastry": (0.15, 0.40),
+    "frozen_foods": (0.10, 0.25),
+    "grocery_staples": (0.05, 0.15),
+    "beverages_alcoholic": (0.15, 0.40),
     "seafood": (0.06, 0.15),
-    "deli": (0.10, 0.25),
-    "baby": (0.08, 0.20),
-    "pet": (0.10, 0.25),
-    "alcohol": (0.15, 0.40),
-    "organic": (0.12, 0.30),
-    "international": (0.12, 0.28),
-    "bulk": (0.05, 0.15),
-    "seasonal": (0.15, 0.45),
+    "confectionery_snacks": (0.15, 0.40),
+    "condiments_spices": (0.12, 0.30),
+    "deli_charcuterie": (0.10, 0.25),
+    "coffee_tea": (0.15, 0.35),
+    "cleaning_detergents": (0.12, 0.30),
+    "kitchen_utensils_tableware": (0.15, 0.35),
+    "horeca_equipment": (0.20, 0.45),
+    "paper_packaging": (0.12, 0.28),
+    "personal_care_hygiene": (0.15, 0.35),
+    "household_goods": (0.12, 0.30),
+    "office_supplies": (0.10, 0.25),
+    "electronics_small_appliances": (0.15, 0.35),
 }
 
 # Shelf life by category (days)
 CATEGORY_SHELF_LIFE = {
-    "dairy": (7, 30),
-    "produce": (3, 14),
-    "bakery": (2, 7),
-    "meat": (3, 10),
-    "beverages": (90, 365),
-    "frozen": (90, 365),
-    "snacks": (60, 365),
-    "household": (365, 1095),
-    "personal_care": (180, 730),
-    "canned_goods": (365, 1095),
-    "condiments": (180, 730),
+    "meat_poultry": (3, 10),
+    "dairy_eggs": (7, 30),
+    "fruits_vegetables": (3, 14),
+    "beverages_non_alcoholic": (90, 365),
+    "bakery_pastry": (2, 7),
+    "frozen_foods": (90, 365),
+    "grocery_staples": (90, 365),
+    "beverages_alcoholic": (365, 3650),
     "seafood": (2, 7),
-    "deli": (5, 14),
-    "baby": (90, 365),
-    "pet": (180, 730),
-    "alcohol": (365, 3650),
-    "organic": (3, 21),
-    "international": (60, 365),
-    "bulk": (90, 365),
-    "seasonal": (30, 180),
+    "confectionery_snacks": (60, 365),
+    "condiments_spices": (180, 730),
+    "deli_charcuterie": (5, 14),
+    "coffee_tea": (180, 730),
+    "cleaning_detergents": (365, 1095),
+    "kitchen_utensils_tableware": (365, 3650),
+    "horeca_equipment": (365, 3650),
+    "paper_packaging": (365, 1095),
+    "personal_care_hygiene": (180, 730),
+    "household_goods": (365, 1095),
+    "office_supplies": (365, 1095),
+    "electronics_small_appliances": (365, 1825),
 }
 
-# Segment behavioral profiles
-SEGMENT_PROFILES = {
-    "budget": {
-        "purchase_freq_weekly": 0.8,
-        "basket_size_mean": 8,
-        "basket_size_std": 3,
-        "promo_affinity": 0.65,
-        "price_sensitivity": 0.85,
-        "email_consent_rate": 0.60,
+# ---------------------------------------------------------------------------
+# Tiered pricing ("Staffelpreise") — Metro's signature pricing model
+# ---------------------------------------------------------------------------
+TIER_DISCOUNT_RANGES = {
+    "tier2_discount": (0.05, 0.15),   # 5-15% off tier1
+    "tier3_discount": (0.15, 0.35),   # 15-35% off tier1
+}
+
+# Default tier quantity thresholds by category
+TIER_QUANTITY_THRESHOLDS = {
+    "meat_poultry":               {"tier2_qty": 3, "tier3_qty": 10},
+    "dairy_eggs":                 {"tier2_qty": 6, "tier3_qty": 24},
+    "fruits_vegetables":          {"tier2_qty": 5, "tier3_qty": 20},
+    "beverages_non_alcoholic":    {"tier2_qty": 6, "tier3_qty": 24},
+    "bakery_pastry":              {"tier2_qty": 6, "tier3_qty": 20},
+    "frozen_foods":               {"tier2_qty": 4, "tier3_qty": 12},
+    "grocery_staples":            {"tier2_qty": 5, "tier3_qty": 20},
+    "beverages_alcoholic":        {"tier2_qty": 6, "tier3_qty": 24},
+    "seafood":                    {"tier2_qty": 3, "tier3_qty": 10},
+    "confectionery_snacks":       {"tier2_qty": 6, "tier3_qty": 24},
+    "condiments_spices":          {"tier2_qty": 6, "tier3_qty": 20},
+    "deli_charcuterie":           {"tier2_qty": 3, "tier3_qty": 10},
+    "coffee_tea":                 {"tier2_qty": 6, "tier3_qty": 24},
+    "cleaning_detergents":        {"tier2_qty": 4, "tier3_qty": 12},
+    "kitchen_utensils_tableware": {"tier2_qty": 3, "tier3_qty": 10},
+    "horeca_equipment":           {"tier2_qty": 2, "tier3_qty": 5},
+    "paper_packaging":            {"tier2_qty": 5, "tier3_qty": 20},
+    "personal_care_hygiene":      {"tier2_qty": 6, "tier3_qty": 24},
+    "household_goods":            {"tier2_qty": 3, "tier3_qty": 10},
+    "office_supplies":            {"tier2_qty": 5, "tier3_qty": 20},
+    "electronics_small_appliances": {"tier2_qty": 2, "tier3_qty": 5},
+}
+
+# ---------------------------------------------------------------------------
+# Metro own brands
+# ---------------------------------------------------------------------------
+METRO_OWN_BRANDS = {
+    "metro_chef": {
+        "categories": [
+            "meat_poultry", "dairy_eggs", "fruits_vegetables", "frozen_foods",
+            "grocery_staples", "seafood", "bakery_pastry", "condiments_spices",
+            "deli_charcuterie",
+        ],
+        "price_factor": 0.85,
+        "margin_factor": 1.40,
     },
-    "premium": {
-        "purchase_freq_weekly": 1.5,
-        "basket_size_mean": 14,
-        "basket_size_std": 5,
-        "promo_affinity": 0.15,
-        "price_sensitivity": 0.20,
-        "email_consent_rate": 0.80,
+    "metro_premium": {
+        "categories": [
+            "meat_poultry", "dairy_eggs", "seafood", "deli_charcuterie",
+            "beverages_alcoholic", "coffee_tea",
+        ],
+        "price_factor": 0.95,
+        "margin_factor": 1.30,
     },
-    "family": {
-        "purchase_freq_weekly": 1.3,
-        "basket_size_mean": 18,
-        "basket_size_std": 6,
-        "promo_affinity": 0.40,
-        "price_sensitivity": 0.55,
-        "email_consent_rate": 0.75,
+    "metro_professional": {
+        "categories": [
+            "kitchen_utensils_tableware", "horeca_equipment", "household_goods",
+            "paper_packaging", "cleaning_detergents",
+        ],
+        "price_factor": 0.88,
+        "margin_factor": 1.35,
     },
-    "horeca": {
-        "purchase_freq_weekly": 2.5,
-        "basket_size_mean": 50,
-        "basket_size_std": 20,
-        "promo_affinity": 0.10,
-        "price_sensitivity": 0.30,
-        "email_consent_rate": 0.50,
+    "aro": {
+        "categories": [
+            "dairy_eggs", "frozen_foods", "grocery_staples", "beverages_non_alcoholic",
+            "confectionery_snacks", "cleaning_detergents", "paper_packaging",
+            "personal_care_hygiene",
+        ],
+        "price_factor": 0.65,
+        "margin_factor": 1.30,
+    },
+    "rioba": {
+        "categories": ["coffee_tea", "beverages_non_alcoholic"],
+        "price_factor": 0.82,
+        "margin_factor": 1.35,
+    },
+    "horeca_select": {
+        "categories": [
+            "meat_poultry", "dairy_eggs", "frozen_foods", "seafood",
+            "condiments_spices", "grocery_staples",
+        ],
+        "price_factor": 0.80,
+        "margin_factor": 1.40,
+    },
+    "tarrington_house": {
+        "categories": ["household_goods", "kitchen_utensils_tableware"],
+        "price_factor": 0.82,
+        "margin_factor": 1.30,
+    },
+    "h_line": {
+        "categories": ["paper_packaging", "cleaning_detergents"],
+        "price_factor": 0.78,
+        "margin_factor": 1.35,
+    },
+    "sigma": {
+        "categories": ["office_supplies", "electronics_small_appliances"],
+        "price_factor": 0.80,
+        "margin_factor": 1.30,
     },
 }
 
-# Category affinity multipliers by segment (>1 = prefers, <1 = avoids)
-SEGMENT_CATEGORY_AFFINITY = {
-    "budget": {
-        "snacks": 2.0, "canned_goods": 2.0, "frozen": 1.8,
-        "beverages": 1.5, "bulk": 1.5,
-        "organic": 0.3, "seafood": 0.4, "alcohol": 0.5,
-    },
-    "premium": {
-        "organic": 3.0, "seafood": 2.5, "alcohol": 2.5,
-        "deli": 2.0, "international": 1.8,
-        "canned_goods": 0.4, "frozen": 0.5, "bulk": 0.3,
-    },
-    "family": {
-        "dairy": 2.5, "bakery": 2.0, "baby": 3.0,
-        "produce": 1.8, "snacks": 1.5,
-        "alcohol": 0.2, "bulk": 0.5,
-    },
-    "horeca": {
-        "bulk": 5.0, "meat": 2.5, "beverages": 2.0,
-        "condiments": 2.0, "dairy": 1.5,
-        "baby": 0.1, "pet": 0.1, "personal_care": 0.2,
-    },
+OWN_BRAND_PROBABILITY = 0.30
+
+# ---------------------------------------------------------------------------
+# Romanian brands per category
+# ---------------------------------------------------------------------------
+ROMANIAN_BRANDS = {
+    "beverages_non_alcoholic": ["Borsec", "Dorna", "Bucovina", "Aqua Carpatica", "Olympus"],
+    "beverages_alcoholic": ["Ursus", "Timisoreana", "Silva", "Jidvei", "Cotnari", "Alexandrion", "Zetea"],
+    "confectionery_snacks": ["ROM", "Joe", "Heidi", "Kandia", "Guylian"],
+    "dairy_eggs": ["Albalact", "Zuzu", "Napolact", "Covalact", "LaDorna"],
+    "meat_poultry": ["Agricola", "Caroli", "CrisTim", "Meda", "Angst"],
+    "bakery_pastry": ["Vel Pitar", "Dobrogea", "Panifcom"],
+    "grocery_staples": ["Bunge", "Untdelemn de la Bunica", "Pambac"],
+    "condiments_spices": ["Raureni", "Olympia", "Bunica"],
+    "deli_charcuterie": ["Cris-Tim", "Angst", "Caroli", "Sergiana"],
 }
 
-# Brands per category (mix of premium and store brands)
 BRANDS_PER_CATEGORY = 8
 
+# ---------------------------------------------------------------------------
+# Category affinity multipliers by business subtype
+# ---------------------------------------------------------------------------
+BUSINESS_CATEGORY_AFFINITY = {
+    "restaurant": {
+        "meat_poultry": 3.0, "dairy_eggs": 2.0, "fruits_vegetables": 2.5,
+        "condiments_spices": 2.0, "seafood": 2.0, "beverages_alcoholic": 1.8,
+        "grocery_staples": 1.5, "deli_charcuterie": 1.5,
+        "office_supplies": 0.1, "electronics_small_appliances": 0.1,
+    },
+    "cafe_bar": {
+        "coffee_tea": 4.0, "beverages_alcoholic": 3.0, "beverages_non_alcoholic": 2.5,
+        "confectionery_snacks": 2.0, "bakery_pastry": 2.0, "dairy_eggs": 1.5,
+        "meat_poultry": 0.5, "office_supplies": 0.1, "horeca_equipment": 0.3,
+    },
+    "hotel": {
+        "cleaning_detergents": 2.5, "personal_care_hygiene": 3.0,
+        "household_goods": 2.0, "beverages_non_alcoholic": 1.8,
+        "beverages_alcoholic": 1.5, "coffee_tea": 2.0,
+        "paper_packaging": 1.5, "meat_poultry": 1.5, "dairy_eggs": 1.5,
+    },
+    "catering": {
+        "meat_poultry": 3.0, "dairy_eggs": 2.5, "fruits_vegetables": 2.5,
+        "frozen_foods": 2.0, "paper_packaging": 2.5, "grocery_staples": 2.0,
+        "condiments_spices": 1.8, "cleaning_detergents": 1.5,
+        "office_supplies": 0.1, "electronics_small_appliances": 0.1,
+    },
+    "fast_food": {
+        "frozen_foods": 3.0, "meat_poultry": 2.5, "beverages_non_alcoholic": 2.5,
+        "paper_packaging": 3.0, "grocery_staples": 2.0, "condiments_spices": 2.5,
+        "seafood": 0.3, "beverages_alcoholic": 0.3,
+    },
+    "bakery_pastry": {
+        "dairy_eggs": 3.5, "grocery_staples": 3.0, "bakery_pastry": 2.0,
+        "confectionery_snacks": 2.0, "fruits_vegetables": 1.5,
+        "meat_poultry": 0.3, "seafood": 0.2,
+    },
+    "ghost_kitchen": {
+        "meat_poultry": 2.5, "frozen_foods": 2.0, "paper_packaging": 3.0,
+        "grocery_staples": 2.0, "condiments_spices": 2.0,
+        "beverages_non_alcoholic": 2.0, "cleaning_detergents": 1.5,
+    },
+    "grocery_store": {
+        "grocery_staples": 2.5, "beverages_non_alcoholic": 2.0,
+        "confectionery_snacks": 2.0, "dairy_eggs": 1.8,
+        "cleaning_detergents": 1.5, "personal_care_hygiene": 1.5,
+        "beverages_alcoholic": 1.5, "frozen_foods": 1.5,
+        "horeca_equipment": 0.1,
+    },
+    "convenience": {
+        "beverages_non_alcoholic": 2.5, "confectionery_snacks": 2.5,
+        "beverages_alcoholic": 2.0, "grocery_staples": 1.5,
+        "dairy_eggs": 1.5, "bakery_pastry": 1.5,
+        "horeca_equipment": 0.1, "seafood": 0.3,
+    },
+    "specialty_food": {
+        "deli_charcuterie": 3.0, "dairy_eggs": 2.5, "beverages_alcoholic": 2.5,
+        "confectionery_snacks": 2.0, "coffee_tea": 2.0, "condiments_spices": 1.8,
+        "cleaning_detergents": 0.3, "office_supplies": 0.1,
+    },
+    "liquor_store": {
+        "beverages_alcoholic": 5.0, "beverages_non_alcoholic": 2.0,
+        "confectionery_snacks": 1.5, "coffee_tea": 1.0,
+        "meat_poultry": 0.1, "dairy_eggs": 0.1, "fruits_vegetables": 0.1,
+    },
+    "general_retail": {
+        "household_goods": 2.0, "cleaning_detergents": 2.0,
+        "personal_care_hygiene": 2.0, "grocery_staples": 1.5,
+        "confectionery_snacks": 1.5, "beverages_non_alcoholic": 1.5,
+    },
+    "office": {
+        "office_supplies": 5.0, "paper_packaging": 2.0, "coffee_tea": 2.5,
+        "beverages_non_alcoholic": 2.0, "cleaning_detergents": 1.5,
+        "confectionery_snacks": 1.5,
+        "meat_poultry": 0.1, "seafood": 0.1,
+    },
+    "hospital_clinic": {
+        "cleaning_detergents": 3.0, "personal_care_hygiene": 3.0,
+        "paper_packaging": 2.5, "beverages_non_alcoholic": 1.5,
+        "office_supplies": 1.5, "household_goods": 1.5,
+        "beverages_alcoholic": 0.1,
+    },
+    "school_university": {
+        "office_supplies": 2.5, "cleaning_detergents": 2.0,
+        "beverages_non_alcoholic": 2.0, "confectionery_snacks": 1.5,
+        "paper_packaging": 2.0, "grocery_staples": 1.5,
+        "beverages_alcoholic": 0.1,
+    },
+    "canteen": {
+        "meat_poultry": 2.5, "dairy_eggs": 2.0, "fruits_vegetables": 2.0,
+        "frozen_foods": 2.0, "grocery_staples": 2.5, "cleaning_detergents": 1.5,
+        "paper_packaging": 1.5, "condiments_spices": 1.5,
+    },
+    "other_org": {
+        "office_supplies": 2.0, "cleaning_detergents": 1.5,
+        "beverages_non_alcoholic": 1.5, "paper_packaging": 1.5,
+        "coffee_tea": 1.5,
+    },
+    "independent_pro": {
+        "office_supplies": 2.0, "coffee_tea": 2.0, "confectionery_snacks": 1.5,
+        "beverages_non_alcoholic": 1.5, "cleaning_detergents": 1.0,
+    },
+    "small_business": {
+        "office_supplies": 2.5, "cleaning_detergents": 1.5,
+        "beverages_non_alcoholic": 1.5, "paper_packaging": 1.5,
+        "coffee_tea": 1.5, "personal_care_hygiene": 1.0,
+    },
+}
+
+# ---------------------------------------------------------------------------
 # Seasonal multipliers (day_of_year -> multiplier)
+# ---------------------------------------------------------------------------
 SEASONAL_EVENTS = {
-    # Christmas build-up (Dec 10-24, days 344-358)
     "christmas": {"start_day": 344, "end_day": 358, "multiplier": 2.5},
-    # Easter (approx Apr 1-15, days 91-105)
     "easter": {"start_day": 91, "end_day": 105, "multiplier": 1.8},
-    # Summer BBQ (Jul-Aug, days 182-243)
     "summer_bbq": {"start_day": 182, "end_day": 243, "multiplier": 1.3},
-    # New Year (Jan 1-5, days 1-5)
     "new_year": {"start_day": 1, "end_day": 5, "multiplier": 1.5},
+}
+
+# Weekly purchase patterns (day_of_week -> multiplier)
+# HoReCa customers peak Mon/Thu (restocking), traders peak Tue/Wed
+WEEKLY_PATTERNS = {
+    "horeca": {0: 1.4, 1: 1.0, 2: 1.0, 3: 1.3, 4: 0.9, 5: 0.7, 6: 0.3},
+    "trader":  {0: 0.9, 1: 1.2, 2: 1.3, 3: 1.0, 4: 1.0, 5: 0.8, 6: 0.3},
+    "sco":     {0: 1.1, 1: 1.1, 2: 1.1, 3: 1.0, 4: 0.9, 5: 0.5, 6: 0.1},
+    "freelancer": {0: 1.0, 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.2, 5: 1.0, 6: 0.5},
+}
+
+# ---------------------------------------------------------------------------
+# Offer types and campaign config
+# ---------------------------------------------------------------------------
+OFFER_TYPE_DIST = {
+    "percentage": 0.35,
+    "fixed_amount": 0.20,
+    "buy_x_get_y": 0.15,
+    "volume_bonus": 0.15,
+    "bundle": 0.10,
+    "free_gift": 0.05,
+}
+
+CAMPAIGN_TYPE_DIST = {
+    "weekly_catalog": 0.35,
+    "personalized": 0.25,
+    "seasonal": 0.15,
+    "churn_prevention": 0.08,
+    "reactivation": 0.05,
+    "new_customer": 0.04,
+    "birthday": 0.03,
+    "cross_sell": 0.05,
+}
+
+CHANNEL_DIST = {
+    "email": 0.30,
+    "app": 0.25,
+    "catalog": 0.20,
+    "sms": 0.15,
+    "in_store": 0.10,
 }
 
 # ---------------------------------------------------------------------------
@@ -251,10 +724,13 @@ SEASONAL_EVENTS = {
 # ---------------------------------------------------------------------------
 CANDIDATE_POOL_SIZE = 200
 CANDIDATE_STRATEGY_LIMITS = {
-    "category_affinity": 80,
-    "segment_popular": 60,
-    "repeat_purchase": 40,
+    "category_affinity": 60,
+    "business_type_popular": 40,
+    "repeat_purchase": 30,
     "high_margin": 20,
+    "tier_upgrade": 20,
+    "cross_sell": 15,
+    "own_brand_switch": 15,
 }
 
 # ---------------------------------------------------------------------------
@@ -268,6 +744,7 @@ REDEMPTION_WINDOW_DAYS = 7
 
 # Feature columns used by the ranker
 FEATURE_COLUMNS = [
+    # Customer features (RFM + behavior)
     "recency_days",
     "frequency",
     "monetary",
@@ -275,15 +752,23 @@ FEATURE_COLUMNS = [
     "avg_basket_size",
     "category_entropy",
     "avg_discount_depth",
+    "avg_basket_quantity",
+    "tier2_purchase_ratio",
+    "tier3_purchase_ratio",
+    "fresh_category_ratio",
+    # Offer features
     "discount_depth",
     "margin_impact",
     "days_until_expiry",
     "historical_redemption_rate",
+    "is_own_brand",
+    # Interaction features
     "bought_product_before",
     "days_since_last_cat_purchase",
     "category_affinity_score",
     "discount_depth_vs_usual",
     "price_sensitivity_match",
+    "business_type_match",
 ]
 
 # LightGBM hyperparameters
@@ -313,6 +798,8 @@ DRIFT_FEATURES = [
     "promo_affinity",
     "avg_basket_size",
     "avg_discount_depth",
+    "tier2_purchase_ratio",
+    "tier3_purchase_ratio",
 ]
 
 # ---------------------------------------------------------------------------

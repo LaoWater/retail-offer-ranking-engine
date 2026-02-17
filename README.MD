@@ -1,111 +1,136 @@
-# Metro Personalized Offers Recommender
+# Metro Romania — Personalized Offers Recommender
 
-A production-grade personalized offer recommendation system for Metro (supermarket chain), demonstrating modern ML engineering practices through a fully reproducible end-to-end pipeline.
+A production-realistic personalized offer recommendation system replicating **Metro Cash & Carry Romania's** database, tiered pricing philosophy, and ML recommendation pipeline.
+
+## Research Findings — Metro Romania's Real Business
+
+### Metro Is B2B-Only
+- Cannot enter without a **Metro Card** linked to a registered business (CUI/CIF required)
+- **100% of transactions are card-linked** — complete purchase history for every customer
+- This is a wholesale cash-and-carry, not a consumer supermarket
+
+### Customer Segments
+| Segment | ~Share | Who They Are |
+|---------|--------|--------------|
+| **HoReCa** | 50% | Restaurants, hotels, cafes, catering, ghost kitchens |
+| **Traders** | 30% | Small shop owners (magazine de cartier), kiosk operators |
+| **SCO** | 12% | Service companies, offices, institutions |
+| **Freelancers** | 8% | PFA/SRL independent professionals |
+
+### Tiered Pricing — "Buy More, Pay Less"
+Every product in Metro has 2-3 price tiers. This is **not a promotion** — it's the permanent pricing structure:
+
+```
+1 buc    →  24.90 RON/kg          (base price)
+6+ buc   →  21.90 RON/kg  (-12%)  (case)
+24+ buc  →  18.90 RON/kg  (-24%)  (bulk/pallet)
+```
+- Tier 2: typically 5-15% off base
+- Tier 3: typically 15-35% off (max ~40%)
+- Thresholds vary: units for packaged goods, kg for fresh products
+
+### Product Assortment (~70% Food / ~30% Non-Food)
+- **Food:** Meat, dairy (telemea, cascaval), produce, bakery, beverages, frozen, staples (sunflower oil, mamaliga flour), seafood (Christmas carp), deli (Sibiu salami, slanina), confectionery, coffee
+- **Non-food:** Cleaning/detergents, kitchen utensils, HoReCa equipment, paper/packaging, personal care, office supplies
+- **Own brands:** METRO Chef, METRO Professional, aro, Rioba, Horeca Select, H-Line
+
+### Promotion Types (Layered on Top of Tiered Pricing)
+- Weekly catalog offers (percentage/monetary discounts)
+- Gift incentives (buy X get Y free)
+- Personalized digital offers (CDP-driven via email, SMS, WhatsApp)
+- RFM-based reactivation campaigns
+- Seasonal campaigns (Christmas, Easter, BBQ season)
+- New customer onboarding sequences
+
+### Metro's Real Tech Stack (What We Replicate in Simplified Form)
+- **Recommender serving:** Go + Kubernetes + Seldon Core → we use FastAPI
+- **ML training:** Google Vertex AI → we use scikit-learn + LightGBM
+- **Customer data:** Adobe CDP, 17M+ customers across 20 countries → we use SQLite
+- **Marketing:** Maestra automation (600M emails/year) → we simulate impressions/redemptions
+
+---
 
 ## Architecture
 
-Two-stage recommender: **Candidate Retrieval** (~200 offers/customer via heuristics) → **Supervised Ranking** (LR/LightGBM predicting P(redemption)).
+Two-stage recommender (same pattern as YouTube, Amazon, Netflix, Metro):
 
 ```
-Raw Data → Features → Candidates → Ranker → API → Dashboard
-     ↑                                  ↓
-  50K customers                   Top-10 offers/user
-  10K products                    Served via FastAPI
-  200 offers                      Visualized in Streamlit
+Synthetic Data (50K customers, 10K products, 200 offers)
+    → Feature Engineering (16 features: RFM, promo affinity, interaction signals)
+    → Candidate Retrieval (~200 offers/customer via 4 strategies)
+    → Supervised Ranking (LR/LightGBM → P(redemption))
+    → Top-10 Recommendations per customer
+    → API serving + Interactive dashboard
 ```
 
 ## Quickstart
 
 ```bash
-# 1. Clone and setup
 git clone https://github.com/LaoWater/retail-offer-ranking-engine.git
 cd retail-offer-ranking-engine
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Generate synthetic data (50K customers, ~2M order items)
-python -m src.generate_data
-
-# 3. Run the full pipeline
-python -m src.daily_run --date 2026-02-11
-
-# 4. Start the API
-uvicorn src.api:app --host 0.0.0.0 --port 8000
-# Then: http://localhost:8000/docs
-
-# 5. Launch the dashboard
-streamlit run src/dashboard.py
-
-# 6. Run tests
-pytest tests/ -v
+python -m src.generate_data          # Generate synthetic Metro Romania data
+python -m src.daily_run --date 2026-02-17  # Run full pipeline
+uvicorn src.api:app --port 8000      # Start API (docs at /docs)
+streamlit run src/dashboard.py       # Launch dashboard
+pytest tests/ -v                     # Run tests
 ```
 
 ## Pipeline Components
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Data Generation | `src/generate_data.py` | 50K customers, 10K products, realistic temporal patterns |
+| Component | File | What It Does |
+|-----------|------|--------------|
+| Config | `src/config.py` | Single source of truth — segments, categories, tiered pricing, all parameters |
+| Data Generation | `src/generate_data.py` | Synthetic Metro Romania data with realistic B2B patterns |
 | Feature Engineering | `src/features.py` | RFM, promo affinity, category entropy, interaction features |
 | Candidate Generation | `src/candidates.py` | 4 strategies: category affinity, segment popularity, repeat purchase, high margin |
-| Ranker Training | `src/train_ranker.py` | Logistic Regression + LightGBM, auto-selects best by AUC |
-| Ranker Scoring | `src/score_ranker.py` | Score candidates, rank, write top-10 per customer |
-| Daily Pipeline | `src/daily_run.py` | Single-command orchestration with structured logging |
-| API Service | `src/api.py` | FastAPI with Pydantic models, health check, batch endpoint |
-| Evaluation | `src/evaluate.py` | NDCG@10, Precision, Recall, MRR, random baseline comparison |
-| Drift Monitoring | `src/drift.py` | PSI-based feature drift detection with alerting |
-| Dashboard | `src/dashboard.py` | 6-tab Streamlit showcase with interactive visualizations |
+| Ranker Training | `src/train_ranker.py` | LR + LightGBM, auto-selects best model by AUC |
+| Scoring | `src/score_ranker.py` | Score candidates, rank, write top-10 per customer |
+| Pipeline | `src/daily_run.py` | Single-command orchestration |
+| API | `src/api.py` | FastAPI with health, recommendations, batch, metrics endpoints |
+| Evaluation | `src/evaluate.py` | NDCG@10, Precision, Recall, MRR vs random baseline |
+| Drift Monitoring | `src/drift.py` | PSI-based feature drift detection |
+| Dashboard | `src/dashboard.py` | Interactive UI — simulate any customer, compare algorithms |
 
-## API Endpoints
+## Two-Phase Roadmap
 
-```
-GET /health                              → DB stats, last run date
-GET /recommendations?customer_id=123     → Top-10 personalized offers
-GET /recommendations/batch?customer_ids=1,2,3 → Batch recommendations
-GET /customers/{id}                      → Customer profile + features
-GET /metrics                             → Latest evaluation metrics
-```
+### Phase 1 — Replicate Metro's Current System (In Progress)
+Classical ML pipeline: LR/LightGBM ranker, heuristic candidate retrieval, batch scoring, interpretable features. Faithful to how Metro's legacy recommender works.
 
-## Dashboard Tabs
+### Phase 2 — Modernize with Deep Learning (Planned)
+- **Embedding retrieval:** Product2Vec + FAISS replacing heuristic candidates
+- **Wide & Deep ranker:** PyTorch neural ranker replacing LightGBM
+- **Sequential models:** SASRec/BERT4Rec for temporal purchase patterns
+- **Uplift modeling:** Causal inference to avoid unnecessary discounts
+- **Online learning:** Thompson Sampling for exploration-exploitation
 
-1. **Customer Insights** — Segment distribution, purchase patterns, category heatmap
-2. **Offer Analytics** — Redemption rates, discount depth analysis, time series
-3. **Model Performance** — AUC comparison, feature importance, PR/ROC curves
-4. **Feature Drift** — PSI heatmap, trend lines, alert thresholds
-5. **Recommendation Explorer** — Pick a customer, see their offers with scores
-6. **Diversity Metrics** — Category coverage, popularity bias, offer distribution
+Target: +5-10% NDCG@10 over Phase 1.
+
+## Key Design Decisions
+
+- **B2B segments only** — HoReCa, Traders, SCO, Freelancers (no consumer segments)
+- **Tiered pricing is structural** — encoded in `products` table, not in offers
+- **Romania-specific data** — Romanian brands, RON currency, local product names
+- **Batch-first** — daily pipeline precomputes recommendations (mirrors Metro's original architecture)
+- **SQLite** — zero infrastructure, full pipeline runs locally in minutes
+- **config.py** — single source of truth for all parameters
 
 ## Tech Stack
 
-- **ML:** scikit-learn, LightGBM
-- **Storage:** SQLite
-- **API:** FastAPI + Pydantic
-- **Dashboard:** Streamlit + Plotly
-- **Monitoring:** PSI drift detection (scipy)
+Python | scikit-learn | LightGBM | SQLite | FastAPI | Streamlit | Plotly | scipy
 
-## Project Structure
+## Sources & References
 
-```
-src/
-  config.py          # Single source of truth for all parameters
-  db.py              # SQLite connection utilities
-  generate_data.py   # Synthetic data generator
-  features.py        # Feature engineering (customer, offer, interaction)
-  candidates.py      # Candidate retrieval (4 strategies)
-  train_ranker.py    # Model training (LR + LightGBM)
-  score_ranker.py    # Candidate scoring and ranking
-  daily_run.py       # Pipeline orchestration
-  api.py             # FastAPI service
-  evaluate.py        # Offline metrics (NDCG, Precision, Recall, MRR)
-  drift.py           # PSI drift monitoring
-  dashboard.py       # Streamlit dashboard
-data/
-  schema.sql         # Database schema
-  metro.db           # Generated SQLite database
-models/
-  ranker_latest.pkl  # Saved model artifact
-tests/
-  test_features.py   # Feature engineering tests
-  test_candidates.py # Candidate generation tests
-  test_api.py        # API endpoint tests
-```
+- [Metro AG Strategy (sCore 2030)](https://www.metroag.de/en/about-us/strategy)
+- [Metro Price Tag Design (Art. Lebedev Studio)](https://www.artlebedev.com/metro-cc/)
+- [Metro Bulk Pricing Explained (MPULSE)](https://www.mpulse.de/en/customer/whats-behind-the-metro-bulk-price)
+- [metro.digital Data Science Hub](https://metro.digital/hubs/data-science-hub)
+- [Metro E-Commerce Architecture (freiheit.com)](https://freiheit.com/what-we-do/case-studies/case-study-metro/)
+- [Metro MarTech Platform (IBM iX)](https://ibmix.de/en/projects/metro-becomes-a-martech-pioneer/)
+- [Metro Marketing Automation (Maestra)](https://maestra.io/blog/cases/metro-e-commerce/)
+- [Metro Romania Catalogs](https://www.metro.ro/cataloagele-metro)
+- [Cheng et al. (2016) — Wide & Deep Learning](https://arxiv.org/abs/1606.07792)
+- [Barkan & Koenigstein (2016) — Item2Vec](https://arxiv.org/abs/1603.04259)
+- [Kang & McAuley (2018) — SASRec](https://arxiv.org/abs/1808.09781)

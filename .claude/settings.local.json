@@ -3,7 +3,23 @@
     "allow": [
       "Bash(git -C \"C:\\\\Users\\\\baciu\\\\Desktop\\\\Neo Training\\\\retail-offer-ranking-engine\" log --oneline --all)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "WebSearch",
+      "WebFetch(domain:www.mpulse.de)",
+      "WebFetch(domain:www.metroag.de)",
+      "WebFetch(domain:metro.digital)",
+      "WebFetch(domain:www.artlebedev.com)",
+      "WebFetch(domain:newsroom.metroag.de)",
+      "WebFetch(domain:www.infosys.com)",
+      "WebFetch(domain:pestel-analysis.com)",
+      "WebFetch(domain:mindbox.cloud)",
+      "WebFetch(domain:portersfiveforce.com)",
+      "WebFetch(domain:maestra.io)",
+      "WebFetch(domain:ibmix.de)",
+      "WebFetch(domain:www.metro.co.in)",
+      "WebFetch(domain:www.ad-hoc-news.de)",
+      "WebFetch(domain:www.metro.ro)",
+      "WebFetch(domain:freiheit.com)"
     ]
   }
 }

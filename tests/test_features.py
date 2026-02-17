@@ -22,9 +22,12 @@ class TestCustomerFeatures:
         columns = {row[1] for row in cursor}
         expected = {
             "customer_id", "recency_days", "frequency", "monetary",
-            "promo_affinity", "avg_basket_size", "category_entropy",
+            "promo_affinity", "avg_basket_size", "avg_basket_quantity",
+            "avg_order_value", "category_entropy",
             "top_3_categories", "avg_discount_depth", "loyalty_tier",
-            "segment", "reference_date",
+            "business_type", "business_subtype", "reference_date",
+            "tier2_purchase_ratio", "tier3_purchase_ratio",
+            "avg_tier_savings_pct", "fresh_category_ratio",
         }
         assert expected.issubset(columns)
 
@@ -54,6 +57,23 @@ class TestCustomerFeatures:
         df = pd.read_sql("SELECT category_entropy FROM customer_features", conn)
         assert (df["category_entropy"] >= 0).all()
 
+    def test_tier_ratios_bounded(self, conn, run_date):
+        build_customer_features(conn, run_date)
+        df = pd.read_sql(
+            "SELECT tier2_purchase_ratio, tier3_purchase_ratio FROM customer_features",
+            conn,
+        )
+        assert (df["tier2_purchase_ratio"] >= 0).all()
+        assert (df["tier2_purchase_ratio"] <= 1).all()
+        assert (df["tier3_purchase_ratio"] >= 0).all()
+        assert (df["tier3_purchase_ratio"] <= 1).all()
+
+    def test_fresh_ratio_bounded(self, conn, run_date):
+        build_customer_features(conn, run_date)
+        df = pd.read_sql("SELECT fresh_category_ratio FROM customer_features", conn)
+        assert (df["fresh_category_ratio"] >= 0).all()
+        assert (df["fresh_category_ratio"] <= 1).all()
+
     def test_all_customers_present(self, conn, run_date):
         build_customer_features(conn, run_date)
         n_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
@@ -66,6 +86,18 @@ class TestOfferFeatures:
         build_offer_features(conn, run_date)
         count = conn.execute("SELECT COUNT(*) FROM offer_features").fetchone()[0]
         assert count > 0
+
+    def test_has_expected_columns(self, conn, run_date):
+        build_offer_features(conn, run_date)
+        cursor = conn.execute("PRAGMA table_info(offer_features)")
+        columns = {row[1] for row in cursor}
+        expected = {
+            "offer_id", "discount_depth", "margin_impact",
+            "days_until_expiry", "historical_redemption_rate",
+            "category", "brand", "tier1_price", "is_own_brand",
+            "offer_type", "campaign_type",
+        }
+        assert expected.issubset(columns)
 
     def test_discount_depth_bounded(self, conn, run_date):
         build_offer_features(conn, run_date)
@@ -100,6 +132,7 @@ class TestInteractionFeatures:
             "customer_id", "offer_id", "bought_product_before",
             "days_since_last_cat_purchase", "category_affinity_score",
             "discount_depth_vs_usual", "price_sensitivity_match",
+            "business_type_match",
         }
         assert expected.issubset(set(result.columns))
 

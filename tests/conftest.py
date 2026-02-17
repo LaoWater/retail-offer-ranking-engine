@@ -1,5 +1,5 @@
 """
-Test fixtures for Metro Recommender.
+Test fixtures for Metro Romania Recommender.
 
 Creates a small fixture database (100 customers, 50 products, 10 offers)
 that all tests can share. Runs the mini data generation once per session.
@@ -9,7 +9,6 @@ import os
 import sys
 import pytest
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import DATA_DIR, MODELS_DIR
@@ -29,7 +28,6 @@ def test_db():
     Generates: 100 customers, 50 products, 10 offers, ~2K order items,
     ~500 impressions, ~25 redemptions.
     """
-    # Clean up any previous test DB
     if TEST_DB_PATH.exists():
         os.remove(TEST_DB_PATH)
 
@@ -52,7 +50,6 @@ def test_db():
     yield conn
     conn.close()
 
-    # Cleanup
     if TEST_DB_PATH.exists():
         os.remove(TEST_DB_PATH)
 

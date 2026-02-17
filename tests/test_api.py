@@ -59,14 +59,34 @@ class TestRecommendationsEndpoint:
         response = client.get("/recommendations")
         assert response.status_code == 422
 
+    def test_response_uses_business_type(self):
+        """Verify the response schema uses business_type instead of segment."""
+        if not TEST_DB_PATH.exists():
+            pytest.skip("Test DB not generated yet")
+        response = client.get("/recommendations?customer_id=1")
+        if response.status_code == 200:
+            data = response.json()
+            assert "business_type" in data
+            assert "business_subtype" in data
+            assert "segment" not in data
+
 
 class TestCustomerEndpoint:
     def test_valid_customer(self):
         if not TEST_DB_PATH.exists():
             pytest.skip("Test DB not generated yet")
         response = client.get("/customers/1")
-        # Either 200 (found) or 404 (not in test DB)
         assert response.status_code in (200, 404)
+
+    def test_customer_has_business_fields(self):
+        if not TEST_DB_PATH.exists():
+            pytest.skip("Test DB not generated yet")
+        response = client.get("/customers/1")
+        if response.status_code == 200:
+            data = response.json()
+            assert "business_type" in data
+            assert "business_subtype" in data
+            assert "metro_card_number" in data
 
     def test_invalid_customer(self):
         if not TEST_DB_PATH.exists():

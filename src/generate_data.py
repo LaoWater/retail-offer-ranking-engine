@@ -1,8 +1,12 @@
 """
-Synthetic data generator for Metro Personalized Offers Recommender.
+Synthetic data generator for Metro Romania Personalized Offers Recommender.
 
-Generates realistic supermarket data with correlated customer segments,
-temporal purchase patterns, and promotional behavior.
+Generates realistic B2B wholesale data with:
+  - Registered business customers (HoReCa, Traders, SCO, Freelancers)
+  - Tiered pricing on every product (Staffelpreise)
+  - Metro own brands and Romanian brands
+  - Wholesale quantity patterns per business subtype
+  - Seasonal and weekly cycles (Mon/Thu peaks for HoReCa)
 
 Usage:
     python -m src.generate_data
@@ -23,19 +27,47 @@ from tqdm import tqdm
 from src.config import (
     SEED, N_CUSTOMERS, N_PRODUCTS, N_OFFERS, N_STORES, HISTORY_DAYS,
     TARGET_ORDER_ITEMS, TARGET_IMPRESSIONS, TARGET_REDEMPTION_RATE,
-    SEGMENT_DIST, LOYALTY_TIERS, CATEGORY_NAMES, CATEGORY_WEIGHTS,
-    SUBCATEGORIES, CATEGORY_PRICE_RANGE, CATEGORY_MARGIN_RANGE,
-    CATEGORY_SHELF_LIFE, SEGMENT_PROFILES, SEGMENT_CATEGORY_AFFINITY,
-    BRANDS_PER_CATEGORY, SEASONAL_EVENTS, DB_PATH, DATA_DIR, MODELS_DIR,
-    LOGS_DIR,
+    BUSINESS_TYPE_DIST, BUSINESS_SUBTYPE_DIST, LOYALTY_TIERS,
+    CATEGORY_NAMES, CATEGORY_WEIGHTS, SUBCATEGORIES,
+    CATEGORY_PRICE_RANGE, CATEGORY_MARGIN_RANGE, CATEGORY_SHELF_LIFE,
+    FRESH_CATEGORIES, BUSINESS_PROFILES, BUSINESS_CATEGORY_AFFINITY,
+    METRO_OWN_BRANDS, OWN_BRAND_PROBABILITY, ROMANIAN_BRANDS,
+    BRANDS_PER_CATEGORY, SEASONAL_EVENTS, WEEKLY_PATTERNS,
+    TIER_DISCOUNT_RANGES, TIER_QUANTITY_THRESHOLDS,
+    OFFER_TYPE_DIST, CAMPAIGN_TYPE_DIST, CHANNEL_DIST,
+    DB_PATH, DATA_DIR, MODELS_DIR, LOGS_DIR,
 )
 from src.db import get_connection, init_db
 
 logger = logging.getLogger(__name__)
 
 
+# Business name templates per type
+_BUSINESS_NAME_TEMPLATES = {
+    "restaurant": ["Restaurant {}", "Trattoria {}", "La Mama {}", "Casa {}", "Taverna {}"],
+    "cafe_bar": ["Cafe {}", "Bar {}", "Coffee House {}", "Bistro {}"],
+    "hotel": ["Hotel {}", "Pensiunea {}", "Vila {}"],
+    "catering": ["Catering {}", "Events {}"],
+    "fast_food": ["Fast Food {}", "Express {}", "Quick Bite {}"],
+    "bakery_pastry": ["Brutaria {}", "Patiseria {}", "Cofetaria {}"],
+    "ghost_kitchen": ["Cloud Kitchen {}", "Ghost Kitchen {}"],
+    "grocery_store": ["Magazin {}", "Alimentara {}", "La Doi Pasi {}"],
+    "convenience": ["Mini Market {}", "Non-Stop {}"],
+    "specialty_food": ["Delicatese {}", "Gourmet {}"],
+    "liquor_store": ["Vinoteca {}", "Spirits {}"],
+    "general_retail": ["General {}", "Market {}"],
+    "office": ["Birou {}", "Office {}"],
+    "hospital_clinic": ["Clinica {}", "Spital {}"],
+    "school_university": ["Scoala {}", "Universitatea {}"],
+    "canteen": ["Cantina {}", "Mensa {}"],
+    "other_org": ["Organizatia {}", "Asociatia {}"],
+    "independent_pro": ["PFA {}", "Cabinet {}"],
+    "small_business": ["SRL {}", "Firma {}"],
+}
+
+
 class MetroDataGenerator:
-    """Generates realistic synthetic data for the Metro recommendation pipeline."""
+    """Generates realistic synthetic data for the Metro Romania recommendation pipeline."""
 
     def __init__(
         self,
@@ -60,7 +92,6 @@ class MetroDataGenerator:
         self.end_date = date(2026, 2, 11)
         self.start_date = self.end_date - timedelta(days=history_days)
 
-        # Derived data stored for cross-referencing during generation
         self._customers_df = None
         self._products_df = None
         self._orders_df = None
@@ -81,7 +112,6 @@ class MetroDataGenerator:
         conn = get_connection(path)
         init_db(conn)
 
-        # Turn off foreign keys during bulk load for speed
         conn.execute("PRAGMA foreign_keys=OFF")
 
         logger.info("Generating customers...")
@@ -102,7 +132,6 @@ class MetroDataGenerator:
         conn.execute("PRAGMA foreign_keys=ON")
         conn.commit()
 
-        # Print summary
         self._print_summary(conn)
         elapsed = time.time() - t_total
         logger.info(f"Data generation completed in {elapsed:.1f}s")
@@ -114,43 +143,81 @@ class MetroDataGenerator:
     # ------------------------------------------------------------------
 
     def _generate_customers(self, conn):
-        segments = list(SEGMENT_DIST.keys())
-        seg_probs = list(SEGMENT_DIST.values())
+        btype_names = list(BUSINESS_TYPE_DIST.keys())
+        btype_probs = list(BUSINESS_TYPE_DIST.values())
 
-        seg_arr = self.rng.choice(segments, size=self.n_customers, p=seg_probs)
+        btype_arr = self.rng.choice(btype_names, size=self.n_customers, p=btype_probs)
 
-        # Loyalty tier correlated with segment
+        # Business subtypes
+        subtype_arr = []
+        for bt in btype_arr:
+            subs = list(BUSINESS_SUBTYPE_DIST[bt].keys())
+            sub_probs = list(BUSINESS_SUBTYPE_DIST[bt].values())
+            subtype_arr.append(self.rng.choice(subs, p=sub_probs))
+
+        # Loyalty tiers
         loyalty = []
-        for seg in seg_arr:
-            tiers = list(LOYALTY_TIERS[seg].keys())
-            probs = list(LOYALTY_TIERS[seg].values())
+        for bt in btype_arr:
+            tiers = list(LOYALTY_TIERS[bt].keys())
+            probs = list(LOYALTY_TIERS[bt].values())
             loyalty.append(self.rng.choice(tiers, p=probs))
 
-        # Home store - some stores are clustered by type
+        # Home store
         store_ids = self.rng.integers(1, self.n_stores + 1, size=self.n_customers)
 
-        # Join dates - skewed toward recent (exponential)
+        # Join dates (skewed toward recent)
         days_ago = self.rng.exponential(scale=365, size=self.n_customers).astype(int)
-        days_ago = np.clip(days_ago, 30, 1095)  # 1 month to 3 years
+        days_ago = np.clip(days_ago, 30, 1095)
         join_dates = [
             (self.end_date - timedelta(days=int(d))).isoformat() for d in days_ago
         ]
 
-        # Email consent correlated with segment
-        email_consent = []
-        for seg in seg_arr:
-            rate = SEGMENT_PROFILES[seg]["email_consent_rate"]
-            email_consent.append(int(self.rng.random() < rate))
+        # Card issue dates (same as join or slightly before)
+        card_issue_dates = [
+            (self.end_date - timedelta(days=int(d) + int(self.rng.integers(0, 30)))).isoformat()
+            for d in days_ago
+        ]
 
-        df = pd.DataFrame({
-            "customer_id": range(1, self.n_customers + 1),
-            "segment": seg_arr,
-            "home_store_id": store_ids,
-            "join_date": join_dates,
-            "loyalty_tier": loyalty,
-            "email_consent": email_consent,
-        })
+        rows = []
+        for i in range(self.n_customers):
+            cid = i + 1
+            bt = btype_arr[i]
+            sub = subtype_arr[i]
+            profile = BUSINESS_PROFILES[sub]
 
+            # Business name
+            templates = _BUSINESS_NAME_TEMPLATES.get(sub, ["Business {}"])
+            tmpl = self.rng.choice(templates)
+            bname = tmpl.format(cid)
+
+            # Tax ID (CUI format)
+            tax_id = f"RO{self.rng.integers(10000000, 99999999)}"
+
+            # Metro card number
+            card_num = f"MC{self.rng.integers(100000000, 999999999)}"
+
+            # Consent flags (from profile)
+            email_c = int(self.rng.random() < profile["email_consent_rate"])
+            sms_c = int(self.rng.random() < profile["sms_consent_rate"])
+            app_reg = int(self.rng.random() < profile["app_registered_rate"])
+
+            rows.append({
+                "customer_id": cid,
+                "business_name": bname,
+                "business_type": bt,
+                "business_subtype": sub,
+                "tax_id": tax_id,
+                "metro_card_number": card_num,
+                "card_issue_date": card_issue_dates[i],
+                "home_store_id": int(store_ids[i]),
+                "join_date": join_dates[i],
+                "loyalty_tier": loyalty[i],
+                "email_consent": email_c,
+                "sms_consent": sms_c,
+                "app_registered": app_reg,
+            })
+
+        df = pd.DataFrame(rows)
         df.to_sql("customers", conn, if_exists="append", index=False)
         conn.commit()
         self._customers_df = df
@@ -168,37 +235,86 @@ class MetroDataGenerator:
             CATEGORY_NAMES, size=self.n_products, p=cat_weights
         )
 
+        # Build own-brand candidate mapping (category -> list of brand_names)
+        own_brand_by_cat = {}
+        for brand_name, info in METRO_OWN_BRANDS.items():
+            for cat in info["categories"]:
+                if cat not in own_brand_by_cat:
+                    own_brand_by_cat[cat] = []
+                own_brand_by_cat[cat].append(brand_name)
+
         rows = []
         for pid in range(1, self.n_products + 1):
             cat = categories[pid - 1]
             subcats = SUBCATEGORIES.get(cat, ["general"])
             subcat = self.rng.choice(subcats)
 
-            # Brand: mix of store brand and named brands
-            brand_num = self.rng.integers(1, BRANDS_PER_CATEGORY + 1)
-            is_store_brand = brand_num <= 2
-            brand = f"store_brand_{brand_num}" if is_store_brand else f"{cat}_brand_{brand_num}"
+            # Determine if own brand
+            is_own_brand = False
+            own_brand_name = None
+            brand = None
 
-            # Price: log-normal within category range
+            if cat in own_brand_by_cat and self.rng.random() < OWN_BRAND_PROBABILITY:
+                is_own_brand = True
+                own_brand_name = self.rng.choice(own_brand_by_cat[cat])
+                brand = own_brand_name.replace("_", " ").title()
+            else:
+                # Use Romanian brands if available, else generic
+                rom_brands = ROMANIAN_BRANDS.get(cat, [])
+                if rom_brands and self.rng.random() < 0.4:
+                    brand = self.rng.choice(rom_brands)
+                else:
+                    brand_num = self.rng.integers(1, BRANDS_PER_CATEGORY + 1)
+                    brand = f"{cat}_brand_{brand_num}"
+
+            # Tier1 price (log-normal within category range, in RON)
             pmin, pmax = CATEGORY_PRICE_RANGE[cat]
             log_mean = (math.log(pmin) + math.log(pmax)) / 2
             log_std = (math.log(pmax) - math.log(pmin)) / 4
-            price = float(np.exp(self.rng.normal(log_mean, log_std)))
-            price = round(max(pmin, min(pmax * 1.5, price)), 2)
+            tier1_price = float(np.exp(self.rng.normal(log_mean, log_std)))
+            tier1_price = round(max(pmin, min(pmax * 1.5, tier1_price)), 2)
 
-            # Store brands are cheaper
-            if is_store_brand:
-                price = round(price * 0.7, 2)
+            # Own-brand price adjustment
+            if is_own_brand:
+                price_factor = METRO_OWN_BRANDS[own_brand_name]["price_factor"]
+                tier1_price = round(tier1_price * price_factor, 2)
+
+            # Tiered pricing
+            tier_thresholds = TIER_QUANTITY_THRESHOLDS.get(
+                cat, {"tier2_qty": 5, "tier3_qty": 20}
+            )
+            t2_disc_min, t2_disc_max = TIER_DISCOUNT_RANGES["tier2_discount"]
+            t3_disc_min, t3_disc_max = TIER_DISCOUNT_RANGES["tier3_discount"]
+
+            tier2_discount = float(self.rng.uniform(t2_disc_min, t2_disc_max))
+            tier3_discount = float(self.rng.uniform(t3_disc_min, t3_disc_max))
+
+            tier2_price = round(tier1_price * (1 - tier2_discount), 2)
+            tier3_price = round(tier1_price * (1 - tier3_discount), 2)
+            tier2_min_qty = tier_thresholds["tier2_qty"]
+            tier3_min_qty = tier_thresholds["tier3_qty"]
 
             # Margin
             mmin, mmax = CATEGORY_MARGIN_RANGE[cat]
             margin = round(float(self.rng.uniform(mmin, mmax)), 3)
-            if is_store_brand:
-                margin = round(margin * 1.4, 3)  # Higher margin on store brands
+            if is_own_brand:
+                margin_factor = METRO_OWN_BRANDS[own_brand_name]["margin_factor"]
+                margin = round(margin * margin_factor, 3)
 
             # Shelf life
             sl_min, sl_max = CATEGORY_SHELF_LIFE[cat]
             shelf_life = int(self.rng.integers(sl_min, sl_max + 1))
+
+            # Unit type
+            if cat in ("meat_poultry", "seafood", "fruits_vegetables", "deli_charcuterie"):
+                unit_type = self.rng.choice(["buc", "kg"], p=[0.4, 0.6])
+            elif cat in ("beverages_non_alcoholic", "beverages_alcoholic", "dairy_eggs"):
+                unit_type = self.rng.choice(["buc", "l"], p=[0.7, 0.3])
+            else:
+                unit_type = "buc"
+
+            pack_size = int(self.rng.choice([1, 1, 1, 6, 12]))
+            is_daily_price = 1 if cat in FRESH_CATEGORIES and self.rng.random() < 0.3 else 0
 
             name = f"{brand}_{subcat}_{pid}"
 
@@ -208,9 +324,18 @@ class MetroDataGenerator:
                 "category": cat,
                 "subcategory": subcat,
                 "brand": brand,
-                "base_price": price,
+                "is_own_brand": int(is_own_brand),
+                "own_brand_name": own_brand_name,
+                "tier1_price": tier1_price,
+                "tier2_price": tier2_price,
+                "tier2_min_qty": tier2_min_qty,
+                "tier3_price": tier3_price,
+                "tier3_min_qty": tier3_min_qty,
                 "margin": margin,
                 "shelf_life_days": shelf_life,
+                "unit_type": unit_type,
+                "pack_size": pack_size,
+                "is_daily_price": is_daily_price,
             })
 
         df = pd.DataFrame(rows)
@@ -233,8 +358,17 @@ class MetroDataGenerator:
             mask = products["category"] == cat
             cat_to_products[cat] = products.loc[mask, "product_id"].values
 
-        # All product ids and prices for fast lookup
-        product_prices = products.set_index("product_id")["base_price"].to_dict()
+        # Product info for fast lookup
+        product_info = {}
+        for _, p in products.iterrows():
+            product_info[p["product_id"]] = {
+                "tier1_price": p["tier1_price"],
+                "tier2_price": p["tier2_price"],
+                "tier2_min_qty": p["tier2_min_qty"],
+                "tier3_price": p["tier3_price"],
+                "tier3_min_qty": p["tier3_min_qty"],
+                "category": p["category"],
+            }
 
         total_items = 0
         order_id = 0
@@ -243,8 +377,6 @@ class MetroDataGenerator:
         order_rows = []
         item_rows = []
 
-        # Compute per-customer category affinity vectors
-        # (segment base + per-customer noise)
         n_cats = len(CATEGORY_NAMES)
 
         for batch_start in tqdm(
@@ -257,9 +389,10 @@ class MetroDataGenerator:
 
             for _, cust in batch.iterrows():
                 cid = cust["customer_id"]
-                seg = cust["segment"]
+                bt = cust["business_type"]
+                sub = cust["business_subtype"]
                 store_id = cust["home_store_id"]
-                profile = SEGMENT_PROFILES[seg]
+                profile = BUSINESS_PROFILES[sub]
 
                 # Customer-specific purchase frequency with noise
                 freq = profile["purchase_freq_weekly"] * (
@@ -269,81 +402,87 @@ class MetroDataGenerator:
 
                 # Customer-specific category affinity
                 cat_affinity = np.array(CATEGORY_WEIGHTS, dtype=float)
-                seg_aff = SEGMENT_CATEGORY_AFFINITY.get(seg, {})
+                sub_aff = BUSINESS_CATEGORY_AFFINITY.get(sub, {})
                 for i, cat_name in enumerate(CATEGORY_NAMES):
-                    cat_affinity[i] *= seg_aff.get(cat_name, 1.0)
-                # Add per-customer noise
+                    cat_affinity[i] *= sub_aff.get(cat_name, 1.0)
                 cat_affinity *= (1 + self.rng.normal(0, 0.2, size=n_cats))
                 cat_affinity = np.maximum(cat_affinity, 0.001)
                 cat_affinity /= cat_affinity.sum()
 
-                # Customer promo affinity (from profile + noise)
+                # Customer promo affinity
                 cust_promo_aff = max(
                     0.0,
                     min(1.0, profile["promo_affinity"] + self.rng.normal(0, 0.1)),
                 )
 
-                # Generate order timestamps over the history window
+                # Generate order timestamps
                 avg_orders = freq * (self.history_days / 7.0)
                 n_orders = max(1, int(self.rng.poisson(avg_orders)))
 
-                # Random days within the window
                 order_days = self.rng.integers(0, self.history_days, size=n_orders)
                 order_days.sort()
 
                 for day_offset in order_days:
                     order_date = self.start_date + timedelta(days=int(day_offset))
-                    dow = order_date.weekday()  # 0=Mon, 6=Sun
-                    dom = order_date.day
+                    dow = order_date.weekday()
                     doy = order_date.timetuple().tm_yday
 
-                    # Time-varying intensity filter
-                    # Weekly: peak on Saturday (5), trough on Tuesday (1)
-                    weekly_mult = 1.0 + 0.3 * math.cos(
-                        2 * math.pi * (dow - 5) / 7
-                    )
-                    # Monthly payday: spike days 25-31 and 1-3
-                    monthly_mult = 1.2 if (dom >= 25 or dom <= 3) else 1.0
+                    # Weekly pattern by business type
+                    weekly_mult = WEEKLY_PATTERNS.get(bt, {}).get(dow, 1.0)
+
                     # Seasonal
                     seasonal_mult = self._get_seasonal_multiplier(doy)
-                    # Acceptance probability
-                    accept_prob = min(1.0, weekly_mult * monthly_mult * seasonal_mult * 0.6)
+
+                    accept_prob = min(1.0, weekly_mult * seasonal_mult * 0.6)
                     if self.rng.random() > accept_prob:
                         continue
 
                     order_id += 1
 
-                    # Basket size
+                    # Basket size (varies by subtype)
                     basket_mean = profile["basket_size_mean"]
                     basket_std = profile["basket_size_std"]
-                    n_items = max(
-                        1,
-                        int(self.rng.normal(basket_mean, basket_std)),
-                    )
+                    n_items = max(1, int(self.rng.normal(basket_mean, basket_std)))
 
-                    # Select products for this basket
+                    # Select products
                     chosen_cats = self.rng.choice(
                         CATEGORY_NAMES, size=n_items, p=cat_affinity
                     )
 
                     order_total = 0.0
+                    order_total_before_tier = 0.0
+                    order_total_qty = 0
+                    items_in_this_order = 0
+
                     for chosen_cat in chosen_cats:
                         prods_in_cat = cat_to_products.get(chosen_cat)
                         if prods_in_cat is None or len(prods_in_cat) == 0:
                             continue
 
                         prod_id = int(self.rng.choice(prods_in_cat))
-                        quantity = int(
-                            self.rng.choice([1, 1, 1, 2, 2, 3])
-                            if seg != "horeca"
-                            else self.rng.choice([5, 10, 12, 20, 24])
-                        )
+                        pinfo = product_info[prod_id]
+
+                        # Wholesale quantities by business type
+                        quantity = self._get_wholesale_quantity(bt, sub, chosen_cat)
+
+                        # Determine tier applied
+                        tier_applied = 1
+                        unit_price = pinfo["tier1_price"]
+                        if quantity >= pinfo["tier3_min_qty"]:
+                            tier_applied = 3
+                            unit_price = pinfo["tier3_price"]
+                        elif quantity >= pinfo["tier2_min_qty"]:
+                            tier_applied = 2
+                            unit_price = pinfo["tier2_price"]
+
+                        # Small price variation
                         unit_price = round(
-                            product_prices[prod_id]
-                            * (1 + self.rng.normal(0, 0.03)),
-                            2,
+                            unit_price * (1 + self.rng.normal(0, 0.02)), 2
                         )
-                        unit_price = max(0.10, unit_price)
+                        unit_price = max(0.50, unit_price)
+
+                        tier_savings = round(pinfo["tier1_price"] - unit_price, 2)
+                        tier_savings = max(0.0, tier_savings)
 
                         # Promo behavior
                         is_promo = int(self.rng.random() < cust_promo_aff * 0.3)
@@ -359,28 +498,31 @@ class MetroDataGenerator:
                             prod_id,
                             quantity,
                             unit_price,
+                            tier_applied,
+                            tier_savings,
                             is_promo,
                             discount_amt,
+                            None,  # offer_id
                         ))
-                        order_total += (unit_price - discount_amt) * quantity
+                        line_total = (unit_price - discount_amt) * quantity
+                        order_total += line_total
+                        order_total_before_tier += pinfo["tier1_price"] * quantity
+                        order_total_qty += quantity
+                        items_in_this_order += 1
 
-                    if not item_rows or item_rows[-1][1] != order_id:
+                    if items_in_this_order == 0:
                         order_id -= 1
                         continue
 
-                    # Count items in this order
-                    items_in_order = 0
-                    for row in reversed(item_rows):
-                        if row[1] == order_id:
-                            items_in_order += 1
-                        else:
-                            break
-
-                    hour = int(self.rng.choice([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19]))
+                    hour = int(self.rng.choice([6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17]))
                     minute = int(self.rng.integers(0, 60))
                     ts = datetime.combine(
                         order_date, datetime.min.time()
                     ).replace(hour=hour, minute=minute)
+
+                    payment = self.rng.choice(
+                        ["card", "cash", "transfer"], p=[0.50, 0.30, 0.20]
+                    )
 
                     order_rows.append((
                         order_id,
@@ -388,10 +530,13 @@ class MetroDataGenerator:
                         store_id,
                         ts.isoformat(),
                         round(order_total, 2),
-                        items_in_order,
+                        round(order_total_before_tier, 2),
+                        order_total_qty,
+                        items_in_this_order,
+                        payment,
                     ))
 
-                    total_items += items_in_order
+                    total_items += items_in_this_order
 
             # Batch insert periodically
             if len(order_rows) > 50000:
@@ -399,7 +544,6 @@ class MetroDataGenerator:
                 order_rows.clear()
                 item_rows.clear()
 
-            # Check if we've hit the target
             if total_items >= self.target_order_items:
                 break
 
@@ -408,17 +552,51 @@ class MetroDataGenerator:
             self._flush_orders(conn, order_rows, item_rows)
 
         logger.info(f"  Created {order_id:,} orders with {total_items:,} items")
-
-        # Store for later use
         self._total_orders = order_id
+
+    def _get_wholesale_quantity(self, business_type, subtype, category):
+        """Generate realistic wholesale quantities per business type and category."""
+        if business_type == "horeca":
+            if category in FRESH_CATEGORIES:
+                qty = int(self.rng.choice([3, 5, 8, 10, 15, 20]))
+            elif category in ("beverages_non_alcoholic", "beverages_alcoholic"):
+                qty = int(self.rng.choice([6, 12, 24, 48]))
+            elif category in ("cleaning_detergents", "paper_packaging"):
+                qty = int(self.rng.choice([4, 6, 12, 24]))
+            elif category == "horeca_equipment":
+                qty = int(self.rng.choice([1, 1, 2]))
+            else:
+                qty = int(self.rng.choice([3, 5, 6, 10, 12]))
+        elif business_type == "trader":
+            if category in FRESH_CATEGORIES:
+                qty = int(self.rng.choice([5, 10, 15, 20]))
+            elif category in ("beverages_non_alcoholic", "beverages_alcoholic"):
+                qty = int(self.rng.choice([12, 24, 48, 96]))
+            elif category in ("confectionery_snacks", "grocery_staples"):
+                qty = int(self.rng.choice([6, 12, 24, 48]))
+            else:
+                qty = int(self.rng.choice([3, 6, 12, 24]))
+        elif business_type == "sco":
+            if category in ("office_supplies", "paper_packaging"):
+                qty = int(self.rng.choice([5, 10, 20, 50]))
+            elif category in ("cleaning_detergents",):
+                qty = int(self.rng.choice([6, 12, 24]))
+            elif category in FRESH_CATEGORIES:
+                qty = int(self.rng.choice([3, 5, 10]))
+            else:
+                qty = int(self.rng.choice([2, 3, 5, 10]))
+        else:  # freelancer
+            qty = int(self.rng.choice([1, 1, 2, 3, 5]))
+
+        return qty
 
     def _flush_orders(self, conn, order_rows, item_rows):
         conn.executemany(
-            "INSERT INTO orders (order_id, customer_id, store_id, order_timestamp, total_amount, num_items) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO orders (order_id, customer_id, store_id, order_timestamp, total_amount, total_amount_before_tier, total_quantity, num_items, payment_method) VALUES (?,?,?,?,?,?,?,?,?)",
             order_rows,
         )
         conn.executemany(
-            "INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price, is_promo, discount_amount) VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price, tier_applied, tier_savings, is_promo, discount_amount, offer_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
             item_rows,
         )
         conn.commit()
@@ -438,7 +616,7 @@ class MetroDataGenerator:
         products = self._products_df
 
         # Prefer products in popular categories for offers
-        pop_cats = CATEGORY_NAMES[:10]  # Top 10 by weight
+        pop_cats = CATEGORY_NAMES[:10]
         pop_mask = products["category"].isin(pop_cats)
         offer_product_pool = products.loc[pop_mask, "product_id"].values
 
@@ -449,26 +627,51 @@ class MetroDataGenerator:
             offer_product_pool, size=self.n_offers, replace=False
         )
 
-        segments = list(SEGMENT_DIST.keys())
-        rows = []
+        btypes = list(BUSINESS_TYPE_DIST.keys())
+        offer_types = list(OFFER_TYPE_DIST.keys())
+        offer_type_probs = list(OFFER_TYPE_DIST.values())
+        campaign_types = list(CAMPAIGN_TYPE_DIST.keys())
+        campaign_probs = list(CAMPAIGN_TYPE_DIST.values())
+        channels = list(CHANNEL_DIST.keys())
+        channel_probs = list(CHANNEL_DIST.values())
 
+        rows = []
         for i in range(self.n_offers):
             oid = i + 1
             pid = int(chosen_products[i])
 
-            # Discount type
-            dtype = self.rng.choice(
-                ["percentage", "fixed_amount", "bogo"], p=[0.60, 0.25, 0.15]
-            )
-            if dtype == "percentage":
-                dvalue = round(float(self.rng.uniform(10, 40)), 0)
-            elif dtype == "fixed_amount":
-                dvalue = round(float(self.rng.uniform(1, 10)), 2)
-            else:
-                dvalue = 100.0  # BOGO
+            # Offer type
+            otype = self.rng.choice(offer_types, p=offer_type_probs)
 
-            # Stagger start dates across the history window
-            # Ensure ~100 are active on any given day
+            # Discount value based on type
+            buy_qty = None
+            get_qty = None
+            min_purchase_qty = None
+            min_purchase_amount = None
+
+            if otype == "percentage":
+                dvalue = round(float(self.rng.uniform(10, 40)), 0)
+            elif otype == "fixed_amount":
+                dvalue = round(float(self.rng.uniform(5, 50)), 2)  # RON
+            elif otype == "buy_x_get_y":
+                buy_qty = int(self.rng.choice([3, 5, 6, 10]))
+                get_qty = int(self.rng.choice([1, 1, 2]))
+                dvalue = 100.0  # 100% off the free item
+            elif otype == "volume_bonus":
+                min_purchase_qty = int(self.rng.choice([6, 10, 12, 24]))
+                dvalue = round(float(self.rng.uniform(5, 20)), 0)
+            elif otype == "bundle":
+                min_purchase_amount = round(float(self.rng.uniform(100, 500)), 0)
+                dvalue = round(float(self.rng.uniform(5, 15)), 0)
+            else:  # free_gift
+                min_purchase_amount = round(float(self.rng.uniform(200, 1000)), 0)
+                dvalue = 0.0
+
+            # Campaign type
+            ctype = self.rng.choice(campaign_types, p=campaign_probs)
+            channel = self.rng.choice(channels, p=channel_probs)
+
+            # Stagger start dates
             offer_duration = int(self.rng.integers(7, 29))
             latest_start = self.history_days - offer_duration
             start_offset = int(self.rng.integers(0, max(1, latest_start)))
@@ -484,25 +687,42 @@ class MetroDataGenerator:
                 )
                 store_scope = ",".join(str(s) for s in sorted(stores))
 
-            # Segment scope
-            segment_scope = None
+            # Business type scope
+            btype_scope = None
             if self.rng.random() < 0.40:
-                n_seg = int(self.rng.integers(1, len(segments)))
-                segs = self.rng.choice(segments, size=n_seg, replace=False)
-                segment_scope = ",".join(sorted(segs))
+                n_bt = int(self.rng.integers(1, len(btypes)))
+                chosen_bt = self.rng.choice(btypes, size=n_bt, replace=False)
+                btype_scope = ",".join(sorted(chosen_bt))
+
+            # Loyalty tier scope
+            ltier_scope = None
+            if self.rng.random() < 0.20:
+                ltier_scope = self.rng.choice(
+                    ["plus,star", "star"], p=[0.7, 0.3]
+                )
 
             max_redemptions = int(self.rng.integers(500, 5001))
+            max_per_customer = int(self.rng.choice([1, 1, 2, 3, 5]))
 
             rows.append({
                 "offer_id": oid,
                 "product_id": pid,
-                "discount_type": dtype,
+                "offer_type": otype,
                 "discount_value": dvalue,
+                "buy_quantity": buy_qty,
+                "get_quantity": get_qty,
+                "min_purchase_qty": min_purchase_qty,
+                "min_purchase_amount": min_purchase_amount,
                 "start_date": sdate.isoformat(),
                 "end_date": edate.isoformat(),
+                "campaign_type": ctype,
+                "channel": channel,
                 "store_scope": store_scope,
-                "segment_scope": segment_scope,
+                "business_type_scope": btype_scope,
+                "business_subtype_scope": None,
+                "loyalty_tier_scope": ltier_scope,
                 "max_redemptions": max_redemptions,
+                "max_per_customer": max_per_customer,
             })
 
         df = pd.DataFrame(rows)
@@ -529,32 +749,30 @@ class MetroDataGenerator:
             offer_product[oid] = {
                 "product_id": pid,
                 "category": prod_row["category"],
-                "base_price": prod_row["base_price"],
-                "discount_type": row["discount_type"],
+                "tier1_price": prod_row["tier1_price"],
+                "offer_type": row["offer_type"],
                 "discount_value": row["discount_value"],
                 "start_date": row["start_date"],
                 "end_date": row["end_date"],
-                "segment_scope": row["segment_scope"],
+                "business_type_scope": row["business_type_scope"],
                 "store_scope": row["store_scope"],
+                "campaign_type": row.get("campaign_type"),
             }
 
-        # Pre-compute customer top categories from order_items
+        # Pre-compute customer purchase history
         logger.info("  Computing customer purchase history for impression generation...")
         cust_categories = self._compute_customer_categories(conn)
         cust_products = self._compute_customer_products(conn)
-
-        # Pre-compute order lookup for redemption linking
         cust_orders = self._compute_customer_orders(conn)
 
-        channels = ["email", "app", "in_store"]
-        channel_weights = [0.40, 0.35, 0.25]
+        channels = list(CHANNEL_DIST.keys())
+        channel_weights = list(CHANNEL_DIST.values())
 
         impression_rows = []
         redemption_rows = []
         impression_id = 0
         redemption_id = 0
 
-        # Process customers in batches
         impressions_per_customer = max(1, self.target_impressions // self.n_customers)
 
         for batch_start in tqdm(
@@ -567,15 +785,15 @@ class MetroDataGenerator:
 
             for _, cust in batch.iterrows():
                 cid = cust["customer_id"]
-                seg = cust["segment"]
+                bt = cust["business_type"]
+                sub = cust["business_subtype"]
                 store_id = cust["home_store_id"]
-                profile = SEGMENT_PROFILES[seg]
+                profile = BUSINESS_PROFILES[sub]
                 cust_promo_aff = profile["promo_affinity"]
                 cust_top_cats = cust_categories.get(cid, set())
                 cust_prods = cust_products.get(cid, set())
                 cust_order_list = cust_orders.get(cid, [])
 
-                # How many impressions for this customer
                 n_imp = max(
                     1,
                     int(
@@ -585,7 +803,6 @@ class MetroDataGenerator:
                 )
 
                 for _ in range(n_imp):
-                    # Pick a random day in the history window
                     day_offset = int(self.rng.integers(0, self.history_days))
                     imp_date = self.start_date + timedelta(days=day_offset)
                     imp_ts = datetime.combine(
@@ -595,7 +812,7 @@ class MetroDataGenerator:
                         minute=int(self.rng.integers(0, 60)),
                     )
 
-                    # Pick an offer that was active on this date
+                    # Pick an offer active on this date
                     active_offers = [
                         oid
                         for oid, info in offer_product.items()
@@ -604,16 +821,16 @@ class MetroDataGenerator:
                     if not active_offers:
                         continue
 
-                    # Bias toward offers in customer's preferred categories
+                    # Score offers for this customer
                     offer_scores = []
                     for oid in active_offers:
                         info = offer_product[oid]
                         score = 1.0
                         if info["category"] in cust_top_cats:
                             score *= 3.0
-                        # Check eligibility
-                        if info["segment_scope"]:
-                            if seg not in info["segment_scope"].split(","):
+                        # Check business type eligibility
+                        if info["business_type_scope"]:
+                            if bt not in info["business_type_scope"].split(","):
                                 score = 0.0
                         if info["store_scope"]:
                             if str(store_id) not in info["store_scope"].split(","):
@@ -630,6 +847,7 @@ class MetroDataGenerator:
 
                     impression_id += 1
                     channel = self.rng.choice(channels, p=channel_weights)
+                    ctype = info.get("campaign_type")
 
                     impression_rows.append((
                         impression_id,
@@ -637,25 +855,27 @@ class MetroDataGenerator:
                         chosen_oid,
                         imp_ts.isoformat(),
                         channel,
+                        ctype,
                     ))
 
-                    # Determine if this impression leads to a redemption
+                    # Determine redemption
                     redeem_prob = self._compute_redemption_prob(
-                        info, cust_promo_aff, cust_top_cats, cust_prods, seg
+                        info, cust_promo_aff, cust_top_cats, cust_prods, bt, sub
                     )
 
                     if self.rng.random() < redeem_prob:
-                        # Link to an order that happens after the impression
-                        # Find the closest order after imp_date
                         linked_order_id = self._find_order_after(
                             cust_order_list, imp_date
                         )
                         if linked_order_id is None:
                             continue
 
-                        redeem_delay = int(self.rng.integers(0, 8))  # 0-7 days
+                        redeem_delay = int(self.rng.integers(0, 8))
                         redeem_ts = imp_ts + timedelta(days=redeem_delay)
                         redemption_id += 1
+
+                        # Compute discount amount
+                        disc_applied = self._compute_discount_amount(info)
 
                         redemption_rows.append((
                             redemption_id,
@@ -663,13 +883,13 @@ class MetroDataGenerator:
                             chosen_oid,
                             linked_order_id,
                             redeem_ts.isoformat(),
+                            channel,
+                            disc_applied,
                         ))
 
             # Batch insert
             if len(impression_rows) > 100000:
-                self._flush_impressions(
-                    conn, impression_rows, redemption_rows
-                )
+                self._flush_impressions(conn, impression_rows, redemption_rows)
                 impression_rows.clear()
                 redemption_rows.clear()
 
@@ -682,34 +902,64 @@ class MetroDataGenerator:
             f"({redemption_id / max(1, impression_id) * 100:.1f}% conversion)"
         )
 
+    def _compute_discount_amount(self, offer_info):
+        """Compute approximate discount amount in RON for a redemption."""
+        otype = offer_info["offer_type"]
+        dvalue = offer_info["discount_value"]
+        price = offer_info["tier1_price"]
+
+        if otype == "percentage":
+            return round(price * dvalue / 100.0, 2)
+        elif otype == "fixed_amount":
+            return round(min(dvalue, price), 2)
+        elif otype == "buy_x_get_y":
+            return round(price, 2)  # one free item
+        elif otype == "volume_bonus":
+            return round(price * dvalue / 100.0, 2)
+        elif otype == "bundle":
+            return round(dvalue, 2)
+        else:  # free_gift
+            return 0.0
+
     def _compute_redemption_prob(
-        self, offer_info, cust_promo_aff, cust_top_cats, cust_prods, segment
+        self, offer_info, cust_promo_aff, cust_top_cats, cust_prods,
+        business_type, business_subtype
     ):
         """Compute P(redemption | impression) based on multiple signals."""
         base_rate = TARGET_REDEMPTION_RATE
 
-        # Category affinity: 3x if customer buys this category
+        # Category affinity
         cat_boost = 3.0 if offer_info["category"] in cust_top_cats else 0.7
 
         # Promo sensitivity
         promo_boost = 0.5 + 1.5 * cust_promo_aff
 
         # Discount depth
-        if offer_info["discount_type"] == "percentage":
-            depth = offer_info["discount_value"] / 100.0
-        elif offer_info["discount_type"] == "fixed_amount":
-            depth = min(1.0, offer_info["discount_value"] / max(0.01, offer_info["base_price"]))
+        otype = offer_info["offer_type"]
+        dvalue = offer_info["discount_value"]
+        price = offer_info["tier1_price"]
+
+        if otype == "percentage":
+            depth = dvalue / 100.0
+        elif otype == "fixed_amount":
+            depth = min(1.0, dvalue / max(0.01, price))
+        elif otype == "buy_x_get_y":
+            depth = 0.50
+        elif otype == "volume_bonus":
+            depth = dvalue / 100.0
+        elif otype == "bundle":
+            depth = 0.30
         else:
-            depth = 0.50  # BOGO
+            depth = 0.20
 
         depth_boost = 0.5 + 2.0 * depth
 
-        # Prior purchase of the product
+        # Prior purchase
         prior_boost = 2.0 if offer_info["product_id"] in cust_prods else 0.8
 
-        # Segment-discount alignment
-        seg_profiles = SEGMENT_PROFILES[segment]
-        sensitivity = seg_profiles["price_sensitivity"]
+        # Business type price sensitivity
+        profile = BUSINESS_PROFILES.get(business_subtype, {})
+        sensitivity = profile.get("price_sensitivity", 0.5)
         alignment = 0.5 + sensitivity * depth * 2.0
 
         prob = base_rate * cat_boost * promo_boost * depth_boost * prior_boost * alignment
@@ -733,7 +983,6 @@ class MetroDataGenerator:
                 cust_cats[cid] = {}
             cust_cats[cid][cat] = cnt
 
-        # Convert to top-3 category sets
         result = {}
         for cid, cat_dict in cust_cats.items():
             sorted_cats = sorted(cat_dict.items(), key=lambda x: -x[1])
@@ -777,18 +1026,17 @@ class MetroDataGenerator:
         for order_id, odate in order_list:
             if odate >= target:
                 return order_id
-        # If no order after, use the last order
         if order_list:
             return order_list[-1][0]
         return None
 
     def _flush_impressions(self, conn, impression_rows, redemption_rows):
         conn.executemany(
-            "INSERT INTO impressions (impression_id, customer_id, offer_id, shown_timestamp, channel) VALUES (?,?,?,?,?)",
+            "INSERT INTO impressions (impression_id, customer_id, offer_id, shown_timestamp, channel, campaign_type) VALUES (?,?,?,?,?,?)",
             impression_rows,
         )
         conn.executemany(
-            "INSERT INTO redemptions (redemption_id, customer_id, offer_id, order_id, redeemed_timestamp) VALUES (?,?,?,?,?)",
+            "INSERT INTO redemptions (redemption_id, customer_id, offer_id, order_id, redeemed_timestamp, channel, discount_amount_applied) VALUES (?,?,?,?,?,?,?)",
             redemption_rows,
         )
         conn.commit()
@@ -810,7 +1058,22 @@ class MetroDataGenerator:
             count = cursor.fetchone()[0]
             logger.info(f"  {t:20s}: {count:>12,}")
 
-        # DB file size
+        # Business type breakdown
+        cursor = conn.execute(
+            "SELECT business_type, COUNT(*) FROM customers GROUP BY business_type ORDER BY COUNT(*) DESC"
+        )
+        logger.info("  Business types:")
+        for row in cursor:
+            logger.info(f"    {row[0]:15s}: {row[1]:>8,}")
+
+        # Tier usage
+        cursor = conn.execute(
+            "SELECT tier_applied, COUNT(*) FROM order_items GROUP BY tier_applied ORDER BY tier_applied"
+        )
+        logger.info("  Tier usage:")
+        for row in cursor:
+            logger.info(f"    Tier {row[0]}: {row[1]:>10,}")
+
         import os
         db_size = os.path.getsize(str(DB_PATH)) / (1024 * 1024)
         logger.info(f"  {'Database size':20s}: {db_size:>10.1f} MB")
@@ -819,7 +1082,7 @@ class MetroDataGenerator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate synthetic data for Metro Recommender"
+        description="Generate synthetic data for Metro Romania Recommender"
     )
     parser.add_argument("--customers", type=int, default=N_CUSTOMERS)
     parser.add_argument("--products", type=int, default=N_PRODUCTS)

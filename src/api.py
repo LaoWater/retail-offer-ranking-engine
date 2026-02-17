@@ -1,5 +1,5 @@
 """
-FastAPI service for Metro Personalized Offers Recommender.
+FastAPI service for Metro Romania Personalized Offers Recommender.
 
 Serves precomputed recommendations via REST API.
 
@@ -19,8 +19,8 @@ from src.config import DB_PATH, API_HOST, API_PORT
 from src.db import get_connection
 
 app = FastAPI(
-    title="Metro Offers Recommender API",
-    description="Serve personalized offer recommendations for Metro customers.",
+    title="Metro Romania Offers Recommender API",
+    description="Serve personalized offer recommendations for Metro Romania B2B customers.",
     version="1.0.0",
 )
 
@@ -34,8 +34,10 @@ class OfferRecommendation(BaseModel):
     product_id: int
     category: str
     brand: str
-    discount_type: str
+    offer_type: str
     discount_value: float
+    tier1_price: float
+    campaign_type: Optional[str] = None
     score: float = Field(..., ge=0.0, le=1.0, description="Predicted P(redemption)")
     rank: int = Field(..., ge=1)
     expiry_date: str
@@ -43,7 +45,8 @@ class OfferRecommendation(BaseModel):
 
 class RecommendationResponse(BaseModel):
     customer_id: int
-    segment: str
+    business_type: str
+    business_subtype: str
     run_date: str
     recommendations: List[OfferRecommendation]
     generated_at: str
@@ -121,7 +124,6 @@ def get_recommendations(
 
     Returns precomputed recommendations from the most recent daily run.
     """
-    # Resolve run_date
     if run_date is None:
         row = conn.execute(
             "SELECT MAX(run_date) FROM recommendations"
@@ -132,13 +134,15 @@ def get_recommendations(
 
     # Check customer exists
     cust = conn.execute(
-        "SELECT segment FROM customers WHERE customer_id = ?", (customer_id,)
+        "SELECT business_type, business_subtype FROM customers WHERE customer_id = ?",
+        (customer_id,)
     ).fetchone()
     if cust is None:
         raise HTTPException(
             status_code=404, detail=f"Customer {customer_id} not found"
         )
-    segment = cust[0]
+    business_type = cust[0]
+    business_subtype = cust[1]
 
     # Fetch recommendations with offer/product details
     rows = conn.execute("""
@@ -149,9 +153,11 @@ def get_recommendations(
             o.product_id,
             p.category,
             p.brand,
-            o.discount_type,
+            o.offer_type,
             o.discount_value,
-            o.end_date AS expiry_date
+            o.end_date AS expiry_date,
+            p.tier1_price,
+            o.campaign_type
         FROM recommendations r
         JOIN offers o ON r.offer_id = o.offer_id
         JOIN products p ON o.product_id = p.product_id
@@ -174,16 +180,19 @@ def get_recommendations(
             product_id=row[3],
             category=row[4],
             brand=row[5],
-            discount_type=row[6],
+            offer_type=row[6],
             discount_value=row[7],
             expiry_date=row[8],
+            tier1_price=row[9],
+            campaign_type=row[10],
         )
         for row in rows
     ]
 
     return RecommendationResponse(
         customer_id=customer_id,
-        segment=segment,
+        business_type=business_type,
+        business_subtype=business_subtype,
         run_date=run_date,
         recommendations=recommendations,
         generated_at=datetime.now().isoformat(),

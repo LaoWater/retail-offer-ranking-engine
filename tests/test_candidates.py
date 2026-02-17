@@ -51,13 +51,14 @@ class TestCandidateGeneration:
 
         assert len(strategies) > 0, "Should have at least one strategy"
         valid_strategies = {
-            "category_affinity", "segment_popular", "repeat_purchase", "high_margin"
+            "category_affinity", "business_type_popular", "repeat_purchase",
+            "high_margin", "tier_upgrade", "cross_sell", "own_brand_switch",
         }
         for s in strategies:
             assert s in valid_strategies, f"Unknown strategy: {s}"
 
     def test_idempotent(self, conn, run_date):
-        """Running twice should produce the same result (not duplicate rows)."""
+        """Running twice should produce the same result."""
         generate_candidate_pool(conn, run_date)
         count1 = conn.execute(
             "SELECT COUNT(*) FROM candidate_pool WHERE run_date = ?", (run_date,)

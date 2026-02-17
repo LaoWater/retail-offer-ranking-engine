@@ -1,9 +1,9 @@
 """
-Streamlit dashboard for Metro Personalized Offers Recommender.
+Streamlit dashboard for Metro Romania Personalized Offers Recommender.
 
 Interactive showcase with 6 tabs:
-  1. Customer Insights
-  2. Offer Analytics
+  1. Customer Insights (B2B business types)
+  2. Offer Analytics (tiered pricing, offer types)
   3. Model Performance
   4. Feature Drift
   5. Recommendation Explorer
@@ -24,11 +24,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import (
-    DB_PATH, MODELS_DIR, CATEGORY_NAMES, SEGMENT_PROFILES,
+    DB_PATH, MODELS_DIR, CATEGORY_NAMES, BUSINESS_PROFILES,
     PSI_WARN_THRESHOLD, PSI_ALERT_THRESHOLD, TOP_N_RECOMMENDATIONS,
 )
 from src.db import get_connection
@@ -38,8 +37,8 @@ from src.db import get_connection
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Metro Offers Recommender",
-    page_icon="🛒",
+    page_title="Metro Romania Offers Recommender",
+    page_icon="M",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -63,10 +62,10 @@ def load_table(table_name, query=None):
 
 def color_palette():
     return {
-        "budget": "#FF6B6B",
-        "premium": "#4ECDC4",
-        "family": "#45B7D1",
-        "horeca": "#FFA07A",
+        "horeca": "#FF6B6B",
+        "trader": "#4ECDC4",
+        "sco": "#45B7D1",
+        "freelancer": "#FFA07A",
     }
 
 
@@ -74,10 +73,10 @@ def color_palette():
 # Sidebar
 # ---------------------------------------------------------------------------
 
-st.sidebar.title("Metro Offers Recommender")
+st.sidebar.title("Metro Romania")
+st.sidebar.markdown("**B2B Cash & Carry Recommender**")
 st.sidebar.markdown("---")
 
-# DB status
 if os.path.exists(str(DB_PATH)):
     db_mb = os.path.getsize(str(DB_PATH)) / (1024 * 1024)
     st.sidebar.metric("Database Size", f"{db_mb:.1f} MB")
@@ -100,14 +99,15 @@ st.sidebar.markdown("---")
 st.sidebar.markdown(
     "**Architecture:** Two-stage recommender  \n"
     "Stage 1: Candidate retrieval (~200/customer)  \n"
-    "Stage 2: Supervised ranking (LR/LightGBM)"
+    "Stage 2: Supervised ranking (LR/LightGBM)  \n"
+    "**All prices in RON**"
 )
 
 # ---------------------------------------------------------------------------
 # Main content - Tabs
 # ---------------------------------------------------------------------------
 
-st.title("Metro Personalized Offers Recommender")
+st.title("Metro Romania Personalized Offers Recommender")
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Customer Insights",
@@ -140,24 +140,24 @@ with tab1:
     c1, c2 = st.columns(2)
 
     with c1:
-        # Segment distribution
-        seg_counts = customers["segment"].value_counts().reset_index()
-        seg_counts.columns = ["segment", "count"]
+        # Business type distribution
+        bt_counts = customers["business_type"].value_counts().reset_index()
+        bt_counts.columns = ["business_type", "count"]
         fig = px.pie(
-            seg_counts, values="count", names="segment",
-            title="Customer Segment Distribution",
-            color="segment", color_discrete_map=color_palette(),
+            bt_counts, values="count", names="business_type",
+            title="Business Type Distribution",
+            color="business_type", color_discrete_map=color_palette(),
             hole=0.4,
         )
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
 
     with c2:
-        # Loyalty tier by segment
-        loyalty = customers.groupby(["segment", "loyalty_tier"]).size().reset_index(name="count")
+        # Loyalty tier by business type
+        loyalty = customers.groupby(["business_type", "loyalty_tier"]).size().reset_index(name="count")
         fig = px.bar(
-            loyalty, x="segment", y="count", color="loyalty_tier",
-            title="Loyalty Tiers by Segment",
+            loyalty, x="business_type", y="count", color="loyalty_tier",
+            title="Loyalty Tiers by Business Type",
             barmode="stack",
             color_discrete_sequence=px.colors.sequential.Teal,
         )
@@ -167,51 +167,62 @@ with tab1:
     c3, c4 = st.columns(2)
 
     with c3:
-        # Purchase frequency by segment
-        merged = cust_feats.merge(customers[["customer_id", "segment"]], on="customer_id", suffixes=("_feat", "_cust"))
-        seg_col = "segment_cust" if "segment_cust" in merged.columns else "segment"
-        fig = px.histogram(
-            merged, x="frequency", color=seg_col,
-            title="Purchase Frequency (90d) by Segment",
-            barmode="overlay", opacity=0.7, nbins=30,
-            color_discrete_map=color_palette(),
+        # Business subtype breakdown
+        sub_counts = customers["business_subtype"].value_counts().head(15).reset_index()
+        sub_counts.columns = ["business_subtype", "count"]
+        fig = px.bar(
+            sub_counts, x="count", y="business_subtype",
+            orientation="h",
+            title="Top 15 Business Subtypes",
+            color="count",
+            color_continuous_scale="Viridis",
         )
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
 
     with c4:
-        # Basket size by segment
-        fig = px.box(
-            merged, x=seg_col, y="avg_basket_size",
-            title="Average Basket Size by Segment",
-            color=seg_col, color_discrete_map=color_palette(),
+        # Tier purchase ratios by business type
+        merged = cust_feats.merge(
+            customers[["customer_id", "business_type"]], on="customer_id"
         )
-        fig.update_layout(height=400, showlegend=False)
+        bt_col = "business_type_y" if "business_type_y" in merged.columns else "business_type"
+        tier_data = merged.groupby(bt_col).agg({
+            "tier2_purchase_ratio": "mean",
+            "tier3_purchase_ratio": "mean",
+        }).reset_index()
+        tier_data.columns = ["business_type", "Tier 2 Ratio", "Tier 3 Ratio"]
+        tier_melted = tier_data.melt(id_vars="business_type", var_name="Tier", value_name="Ratio")
+        fig = px.bar(
+            tier_melted, x="business_type", y="Ratio", color="Tier",
+            title="Avg Tier Purchase Ratios by Business Type",
+            barmode="group",
+            color_discrete_sequence=["#4ECDC4", "#FF6B6B"],
+        )
+        fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
 
-    # Category-segment heatmap
-    st.subheader("Category Preferences by Segment")
+    # Category-business_type heatmap
+    st.subheader("Category Preferences by Business Type")
     try:
-        cat_seg = load_table(
-            "cat_seg",
+        cat_bt = load_table(
+            "cat_bt",
             """
-            SELECT c.segment, p.category, COUNT(*) AS purchase_count
+            SELECT c.business_type, p.category, COUNT(*) AS purchase_count
             FROM orders o
             JOIN order_items oi ON o.order_id = oi.order_id
             JOIN products p ON oi.product_id = p.product_id
             JOIN customers c ON o.customer_id = c.customer_id
-            GROUP BY c.segment, p.category
+            GROUP BY c.business_type, p.category
             """
         )
-        pivot = cat_seg.pivot_table(
-            index="category", columns="segment", values="purchase_count", fill_value=0
+        pivot = cat_bt.pivot_table(
+            index="category", columns="business_type", values="purchase_count", fill_value=0
         )
-        # Normalize to percentages per segment
         pivot_pct = pivot.div(pivot.sum(axis=0), axis=1) * 100
 
         fig = px.imshow(
             pivot_pct,
-            title="Category Purchase Share by Segment (%)",
+            title="Category Purchase Share by Business Type (%)",
             color_continuous_scale="YlOrRd",
             aspect="auto",
         )
@@ -263,7 +274,7 @@ with tab2:
             st.plotly_chart(fig, use_container_width=True)
 
     with c2:
-        # Discount depth vs redemption rate scatter
+        # Discount depth vs redemption rate
         if not offer_feats.empty:
             fig = px.scatter(
                 offer_feats, x="discount_depth", y="historical_redemption_rate",
@@ -275,7 +286,7 @@ with tab2:
             fig.update_layout(height=500)
             st.plotly_chart(fig, use_container_width=True)
 
-    # Daily impressions/redemptions over time
+    # Impressions/redemptions over time
     st.subheader("Impressions & Redemptions Over Time")
     try:
         daily_imp = load_table(
@@ -312,14 +323,14 @@ with tab2:
     except Exception as e:
         st.warning(f"Could not load time series: {e}")
 
-    # Discount type distribution
+    # Offer type distribution
     c1, c2 = st.columns(2)
     with c1:
-        dtype_counts = offers["discount_type"].value_counts().reset_index()
-        dtype_counts.columns = ["discount_type", "count"]
+        dtype_counts = offers["offer_type"].value_counts().reset_index()
+        dtype_counts.columns = ["offer_type", "count"]
         fig = px.pie(
-            dtype_counts, values="count", names="discount_type",
-            title="Discount Type Distribution",
+            dtype_counts, values="count", names="offer_type",
+            title="Offer Type Distribution",
             color_discrete_sequence=px.colors.qualitative.Set2,
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -327,7 +338,8 @@ with tab2:
     with c2:
         # Top performing offers
         top_offers = offer_feats.nlargest(10, "historical_redemption_rate")[
-            ["offer_id", "category", "brand", "discount_depth", "historical_redemption_rate", "total_impressions"]
+            ["offer_id", "category", "brand", "offer_type", "discount_depth",
+             "historical_redemption_rate", "total_impressions"]
         ]
         st.subheader("Top 10 Offers by Redemption Rate")
         st.dataframe(top_offers, use_container_width=True)
@@ -340,14 +352,12 @@ with tab2:
 with tab3:
     st.header("Model Performance")
 
-    # Load model artifact
     artifact_path = MODELS_DIR / "ranker_latest.pkl"
     if artifact_path.exists():
         import joblib
         artifact = joblib.load(artifact_path)
         metrics = artifact.get("metrics", {})
 
-        # Key metrics
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("LR AUC", f"{metrics.get('lr_auc', 0):.4f}")
         col2.metric("LightGBM AUC", f"{metrics.get('lgbm_auc', 0):.4f}")
@@ -359,7 +369,6 @@ with tab3:
         c1, c2 = st.columns(2)
 
         with c1:
-            # Feature importance
             importance = metrics.get("feature_importance", {})
             if importance:
                 imp_df = pd.DataFrame(
@@ -373,11 +382,10 @@ with tab3:
                     color="importance",
                     color_continuous_scale="Viridis",
                 )
-                fig.update_layout(height=500)
+                fig.update_layout(height=600)
                 st.plotly_chart(fig, use_container_width=True)
 
         with c2:
-            # Model comparison bar chart
             comparison = pd.DataFrame([
                 {"Model": "Logistic Regression", "AUC": metrics.get("lr_auc", 0),
                  "Train Time (s)": metrics.get("lr_train_time_s", 0)},
@@ -397,7 +405,7 @@ with tab3:
 
             st.dataframe(comparison, use_container_width=True)
 
-        # Offline evaluation metrics (if available)
+        # Offline evaluation metrics
         st.subheader("Offline Evaluation Metrics")
         try:
             eval_row = get_db().execute("""
@@ -433,15 +441,14 @@ with tab4:
         if drift_log.empty:
             st.info("No drift data available. Run the pipeline to compute drift.")
         else:
-            # Current drift summary
             latest_date = drift_log["run_date"].max()
             latest_drift = drift_log[drift_log["run_date"] == latest_date]
 
             st.subheader(f"Latest Drift Report ({latest_date})")
             for _, row in latest_drift.iterrows():
-                icon = "🟢" if row["severity"] == "ok" else ("🟡" if row["severity"] == "warn" else "🔴")
+                icon = "OK" if row["severity"] == "ok" else ("WARN" if row["severity"] == "warn" else "ALERT")
                 st.markdown(
-                    f"{icon} **{row['feature_name']}**: PSI = {row['psi_value']:.4f} ({row['severity']})"
+                    f"**[{icon}] {row['feature_name']}**: PSI = {row['psi_value']:.4f} ({row['severity']})"
                 )
 
             st.markdown("---")
@@ -449,7 +456,6 @@ with tab4:
             c1, c2 = st.columns(2)
 
             with c1:
-                # PSI heatmap over time
                 pivot = drift_log.pivot_table(
                     index="feature_name", columns="run_date",
                     values="psi_value", fill_value=0,
@@ -465,7 +471,6 @@ with tab4:
                 st.plotly_chart(fig, use_container_width=True)
 
             with c2:
-                # PSI line chart with thresholds
                 fig = px.line(
                     drift_log, x="run_date", y="psi_value",
                     color="feature_name",
@@ -482,7 +487,6 @@ with tab4:
                 fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
 
-            # Alert summary
             alerts = drift_log[drift_log["severity"] != "ok"]
             if not alerts.empty:
                 st.warning(f"{len(alerts)} drift alerts detected across all runs")
@@ -502,9 +506,8 @@ with tab5:
     try:
         conn = get_db()
 
-        # Customer selector
         sample_customers = pd.read_sql("""
-            SELECT DISTINCT r.customer_id, c.segment, c.loyalty_tier
+            SELECT DISTINCT r.customer_id, c.business_type, c.business_subtype, c.loyalty_tier
             FROM recommendations r
             JOIN customers c ON r.customer_id = c.customer_id
             LIMIT 200
@@ -514,13 +517,12 @@ with tab5:
             st.info("No recommendations available. Run the pipeline first.")
         else:
             options = [
-                f"{row['customer_id']} ({row['segment']}, {row['loyalty_tier']})"
+                f"{row['customer_id']} ({row['business_type']}/{row['business_subtype']}, {row['loyalty_tier']})"
                 for _, row in sample_customers.iterrows()
             ]
             selected = st.selectbox("Select a customer:", options)
             customer_id = int(selected.split(" ")[0])
 
-            # Customer profile
             cust = conn.execute(
                 "SELECT * FROM customers WHERE customer_id = ?", (customer_id,)
             ).fetchone()
@@ -533,9 +535,11 @@ with tab5:
             with c1:
                 st.subheader("Customer Profile")
                 if cust:
-                    st.markdown(f"**Segment:** {cust['segment']}")
+                    st.markdown(f"**Business:** {cust['business_name']}")
+                    st.markdown(f"**Type:** {cust['business_type']} / {cust['business_subtype']}")
                     st.markdown(f"**Loyalty Tier:** {cust['loyalty_tier']}")
                     st.markdown(f"**Home Store:** {cust['home_store_id']}")
+                    st.markdown(f"**Metro Card:** {cust['metro_card_number']}")
                     st.markdown(f"**Joined:** {cust['join_date']}")
 
                 if feats:
@@ -544,15 +548,19 @@ with tab5:
                     fc1, fc2, fc3 = st.columns(3)
                     fc1.metric("Recency", f"{feats['recency_days']:.0f} days")
                     fc2.metric("Frequency", f"{feats['frequency']}")
-                    fc3.metric("Monetary", f"€{feats['monetary']:.0f}")
+                    fc3.metric("Monetary", f"{feats['monetary']:.0f} RON")
 
                     fc4, fc5, fc6 = st.columns(3)
                     fc4.metric("Promo Affinity", f"{feats['promo_affinity']:.1%}")
                     fc5.metric("Basket Size", f"{feats['avg_basket_size']:.1f}")
                     fc6.metric("Cat Entropy", f"{feats['category_entropy']:.2f}")
 
+                    fc7, fc8, fc9 = st.columns(3)
+                    fc7.metric("Tier2 Ratio", f"{feats['tier2_purchase_ratio']:.1%}")
+                    fc8.metric("Tier3 Ratio", f"{feats['tier3_purchase_ratio']:.1%}")
+                    fc9.metric("Fresh Ratio", f"{feats['fresh_category_ratio']:.1%}")
+
             with c2:
-                # Category affinity radar chart
                 if feats and feats["top_3_categories"]:
                     try:
                         top_cats = json.loads(feats["top_3_categories"])
@@ -592,7 +600,8 @@ with tab5:
                 SELECT
                     r.rank, r.score,
                     p.category, p.brand, p.name AS product,
-                    o.discount_type, o.discount_value,
+                    o.offer_type, o.discount_value,
+                    p.tier1_price,
                     o.end_date AS expires,
                     cp.strategy
                 FROM recommendations r
@@ -608,7 +617,6 @@ with tab5:
             """, conn, params=(customer_id,))
 
             if not recs.empty:
-                # Score distribution
                 fig = px.bar(
                     recs, x="rank", y="score",
                     color="category",
@@ -641,7 +649,6 @@ with tab6:
         if last_run is None:
             st.info("No recommendations available.")
         else:
-            # Unique categories per customer's top-N
             diversity = pd.read_sql("""
                 SELECT r.customer_id, COUNT(DISTINCT p.category) AS n_categories
                 FROM recommendations r
@@ -669,7 +676,6 @@ with tab6:
                 st.plotly_chart(fig, use_container_width=True)
 
             with c2:
-                # Offer coverage: what % of offers appear in any recommendation?
                 rec_offers = pd.read_sql("""
                     SELECT COUNT(DISTINCT offer_id) AS n_rec_offers FROM recommendations
                     WHERE run_date = ?
@@ -724,7 +730,6 @@ with tab6:
                 fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
 
-                # Top recommended offers
                 st.subheader("Most Recommended Offers")
                 st.dataframe(pop_bias.head(15), use_container_width=True)
 
