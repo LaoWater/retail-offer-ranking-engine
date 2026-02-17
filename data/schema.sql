@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS orders (
     total_amount_before_tier REAL,     -- amount if all items at tier1
     total_quantity INTEGER NOT NULL,
     num_items INTEGER NOT NULL,
+    purchase_mode TEXT DEFAULT 'business',  -- 'business' (~87%) or 'individual' (~13%)
     payment_method TEXT DEFAULT 'card',
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
@@ -155,6 +156,7 @@ CREATE TABLE IF NOT EXISTS customer_features (
     tier3_purchase_ratio REAL,
     avg_tier_savings_pct REAL,
     fresh_category_ratio REAL,
+    business_order_ratio REAL,         -- ratio of business vs individual purchases
     preferred_shopping_day INTEGER,
     days_between_visits_avg REAL,
     loyalty_tier TEXT,
@@ -264,6 +266,9 @@ CREATE INDEX IF NOT EXISTS idx_customers_business_type
 
 CREATE INDEX IF NOT EXISTS idx_customers_business_subtype
     ON customers(business_subtype);
+
+CREATE INDEX IF NOT EXISTS idx_orders_purchase_mode
+    ON orders(purchase_mode);
 
 CREATE INDEX IF NOT EXISTS idx_candidate_pool_date
     ON candidate_pool(run_date, customer_id);

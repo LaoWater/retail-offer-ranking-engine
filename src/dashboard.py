@@ -231,6 +231,45 @@ with tab1:
     except Exception as e:
         st.warning(f"Could not generate heatmap: {e}")
 
+    # Purchase mode breakdown
+    st.subheader("Purchase Mode: Business vs Individual")
+    try:
+        pm_data = load_table(
+            "pm_data",
+            """
+            SELECT o.purchase_mode, c.business_type,
+                   COUNT(*) AS order_count,
+                   AVG(o.total_amount) AS avg_amount,
+                   AVG(o.num_items) AS avg_items
+            FROM orders o
+            JOIN customers c ON o.customer_id = c.customer_id
+            GROUP BY o.purchase_mode, c.business_type
+            """
+        )
+        pm1, pm2 = st.columns(2)
+        with pm1:
+            pm_total = pm_data.groupby("purchase_mode")["order_count"].sum().reset_index()
+            fig = px.pie(
+                pm_total, values="order_count", names="purchase_mode",
+                title="Order Distribution: Business vs Individual",
+                color="purchase_mode",
+                color_discrete_map={"business": "#4ECDC4", "individual": "#FF6B6B"},
+                hole=0.4,
+            )
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+        with pm2:
+            fig = px.bar(
+                pm_data, x="business_type", y="avg_amount", color="purchase_mode",
+                title="Avg Order Amount by Mode & Business Type (RON)",
+                barmode="group",
+                color_discrete_map={"business": "#4ECDC4", "individual": "#FF6B6B"},
+            )
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"Could not generate purchase mode charts: {e}")
+
 
 # =========================================================================
 # Tab 2: Offer Analytics

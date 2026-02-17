@@ -8,20 +8,34 @@ Usage:
     uvicorn src.api:app --host 0.0.0.0 --port 8000
 """
 
+import json
 import os
-from datetime import date, datetime
+import logging
+import threading
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.config import DB_PATH, API_HOST, API_PORT
 from src.db import get_connection
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title="Metro Romania Offers Recommender API",
     description="Serve personalized offer recommendations for Metro Romania B2B customers.",
     version="1.0.0",
+)
+
+# CORS — allow React dev server
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -253,6 +267,71 @@ def get_customer_profile(customer_id: int, conn=Depends(get_db)):
     return profile
 
 
+# ---------------------------------------------------------------------------
+# New endpoints for frontend
+# ---------------------------------------------------------------------------
+
+@app.get("/customers/sample")
+def get_customer_sample(
+    business_type: Optional[str] = Query(None),
+    limit: int = Query(20, le=100),
+    conn=Depends(get_db),
+):
+    """Get a random sample of customers for the selector dropdown."""
+    if business_type:
+        rows = conn.execute(
+            """SELECT customer_id, business_name, business_type, business_subtype,
+                      loyalty_tier, home_store_id
+               FROM customers
+               WHERE business_type = ?
+               ORDER BY RANDOM() LIMIT ?""",
+            (business_type, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """SELECT customer_id, business_name, business_type, business_subtype,
+                      loyalty_tier, home_store_id
+               FROM customers
+               ORDER BY RANDOM() LIMIT ?""",
+            (limit,),
+        ).fetchall()
+
+    return [dict(r) for r in rows]
+
+
+@app.get("/customers/search")
+def search_customers(
+    q: str = Query(..., min_length=2),
+    limit: int = Query(20, le=100),
+    conn=Depends(get_db),
+):
+    """Search customers by business name."""
+    rows = conn.execute(
+        """SELECT customer_id, business_name, business_type, business_subtype,
+                  loyalty_tier, home_store_id
+           FROM customers
+           WHERE business_name LIKE ?
+           ORDER BY business_name
+           LIMIT ?""",
+        (f"%{q}%", limit),
+    ).fetchall()
+
+    return [dict(r) for r in rows]
+
+
+@app.get("/products/{product_id}")
+def get_product_detail(product_id: int, conn=Depends(get_db)):
+    """Get product details with tier pricing."""
+    row = conn.execute(
+        "SELECT * FROM products WHERE product_id = ?", (product_id,)
+    ).fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+
+    return dict(row)
+
+
 @app.get("/metrics")
 def get_latest_metrics(conn=Depends(get_db)):
     """Get metrics from the latest pipeline run."""
@@ -268,6 +347,138 @@ def get_latest_metrics(conn=Depends(get_db)):
         raise HTTPException(status_code=404, detail="No evaluation metrics available")
 
     return {"run_date": row[0], "metadata": row[1]}
+
+
+@app.get("/stats")
+def get_db_stats(conn=Depends(get_db)):
+    """Database summary statistics."""
+    def count(table: str) -> int:
+        return conn.execute(f"SELECT COUNT(*) FROM [{table}]").fetchone()[0]
+
+    last_run = conn.execute("SELECT MAX(run_date) FROM recommendations").fetchone()[0]
+
+    db_size = 0.0
+    if os.path.exists(str(DB_PATH)):
+        db_size = round(os.path.getsize(str(DB_PATH)) / (1024 * 1024), 1)
+
+    return {
+        "total_customers": count("customers"),
+        "total_products": count("products"),
+        "total_offers": count("offers"),
+        "total_orders": count("orders"),
+        "total_recommendations": count("recommendations"),
+        "db_size_mb": db_size,
+        "last_run_date": last_run,
+    }
+
+
+@app.get("/pipeline/runs")
+def get_pipeline_runs(
+    limit: int = Query(10, le=100),
+    conn=Depends(get_db),
+):
+    """Recent pipeline run log."""
+    rows = conn.execute(
+        """SELECT run_id, run_date, step, status, duration_seconds, metadata, created_at
+           FROM pipeline_runs
+           ORDER BY run_id DESC
+           LIMIT ?""",
+        (limit,),
+    ).fetchall()
+
+    return [dict(r) for r in rows]
+
+
+@app.post("/pipeline/simulate-day")
+def simulate_day(conn=Depends(get_db)):
+    """Run the daily pipeline for the next date."""
+    # Get last run date
+    row = conn.execute("SELECT MAX(run_date) FROM pipeline_runs").fetchone()
+    last_date_str = row[0] if row and row[0] else None
+    conn.close()
+
+    if last_date_str:
+        last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
+        next_date = last_date + timedelta(days=1)
+    else:
+        next_date = date.today()
+
+    run_date = next_date.strftime("%Y-%m-%d")
+
+    from src.daily_run import run_pipeline
+    results = run_pipeline(run_date)
+
+    return {
+        "status": "completed",
+        "run_date": run_date,
+        "results": {
+            k: {"status": v.get("status", "unknown"), "duration": v.get("duration", 0)}
+            for k, v in results.items()
+        },
+    }
+
+
+@app.post("/pipeline/simulate-week")
+def simulate_week(conn=Depends(get_db)):
+    """Run the daily pipeline for 7 consecutive days."""
+    row = conn.execute("SELECT MAX(run_date) FROM pipeline_runs").fetchone()
+    last_date_str = row[0] if row and row[0] else None
+    conn.close()
+
+    if last_date_str:
+        last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
+    else:
+        last_date = date.today() - timedelta(days=1)
+
+    from src.daily_run import run_pipeline
+
+    all_results = {}
+    for i in range(1, 8):
+        run_date = (last_date + timedelta(days=i)).strftime("%Y-%m-%d")
+        results = run_pipeline(run_date)
+        all_results[run_date] = {
+            k: {"status": v.get("status", "unknown"), "duration": v.get("duration", 0)}
+            for k, v in results.items()
+        }
+
+    final_date = (last_date + timedelta(days=7)).strftime("%Y-%m-%d")
+    return {
+        "status": "completed",
+        "run_date": final_date,
+        "results": all_results,
+    }
+
+
+@app.get("/drift/latest")
+def get_drift_latest(conn=Depends(get_db)):
+    """Latest drift report."""
+    # Get the most recent run_date with drift data
+    row = conn.execute(
+        "SELECT MAX(run_date) FROM drift_log"
+    ).fetchone()
+
+    if row is None or row[0] is None:
+        return {"run_date": None, "entries": [], "retrain_recommended": False}
+
+    run_date = row[0]
+
+    rows = conn.execute(
+        """SELECT feature_name AS feature, psi_value AS psi, severity
+           FROM drift_log
+           WHERE run_date = ?
+           ORDER BY psi_value DESC""",
+        (run_date,),
+    ).fetchall()
+
+    entries = [dict(r) for r in rows]
+    n_alerts = sum(1 for e in entries if e["severity"] == "alert")
+
+    from src.config import DRIFT_RETRAIN_MIN_FEATURES
+    return {
+        "run_date": run_date,
+        "entries": entries,
+        "retrain_recommended": n_alerts >= DRIFT_RETRAIN_MIN_FEATURES,
+    }
 
 
 def main():

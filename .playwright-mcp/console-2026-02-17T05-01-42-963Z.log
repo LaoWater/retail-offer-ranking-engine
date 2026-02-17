@@ -1,0 +1,54 @@
+[     930ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[     930ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[     930ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[     930ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1547ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1547ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1548ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1548ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1789ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://produse.metro.ro/ordercapture/customercart/carts/alias/current?customerId=6421100015829015&cardholderNumber=1&storeId=00015&country=RO&locale=ro-RO&__t=1771304504698:0
+[    1790ms] [ERROR] Unhandled error was handled by fallbackErrorCodeHandler. e: No single active cart exists for 6421100015829015/1:00015.
+    at https://produse.metro.ro/ordercapture/ui/static/app/9030.c875b0f51666bd7fd3fc.js:1:18876
+    at Generator.<anonymous> (https://produse.metro.ro/ordercapture/ui/static/app/9030.c875b0f51666bd7fd3fc.js:1:14954)
+    at Generator.next (https://produse.metro.ro/ordercapture/ui/static/app/9030.c875b0f51666bd7fd3fc.js:1:15784)
+    at T (https://produse.metro.ro/ordercapture/ui/static/app/9030.c875b0f51666bd7fd3fc.js:1:17086)
+    at u (https://produse.metro.ro/ordercapture/ui/static/app/9030.c875b0f51666bd7fd3fc.js:1:17288) @ https://produse.metro.ro/ordercapture/uidispatcher/static/app/4713.4f9032f58eb25af662e9.js:0
+[    1791ms] [WARNING] Error in component ErrorHandler: OC-944No single active cart exists for 6421100015829015/1:00015. @ https://produse.metro.ro/ordercapture/ui/static/app/8045.323e24babb07ab2ef2f6.js:0
+[    2017ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/articlesearch-ui/static/app/1614.b3cc51787f616eac9d52.js:0
+[    2065ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/articlesearch-ui/static/app/1614.b3cc51787f616eac9d52.js:0
+[    2066ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/articlesearch-ui/static/app/1614.b3cc51787f616eac9d52.js:0
+[    2066ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/articlesearch-ui/static/app/1614.b3cc51787f616eac9d52.js:0
+[    2112ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://produse.metro.ro/cia.customerhistory.v1/customer-history/RO/6421100015829015?templateType=productpage&__t=1771304505032:0
+[    2247ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/cia/promotion-ui/app/2278.ca8adcf9c380805dca91.js:27
+[    2247ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/cia/promotion-ui/app/2278.ca8adcf9c380805dca91.js:27
+[    2292ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://produse.metro.ro/explore.content.v1/sitecore/footer/RO/ro-RO?__t=1771304505208:0
+[    2293ms] [WARNING] Error in component SitecoreFooter: Loading of footer failed. e: HTTP Request failed with status 404
+    at https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:13850
+    at f (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:1194)
+    at Generator.<anonymous> (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:2536)
+    at Generator.next (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:1623)
+    at T (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:7097)
+    at i (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:14264) @ https://produse.metro.ro/cia/promotion-ui/app/204.7591836dd1c7c17c95c2.js:0
+[    2294ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://produse.metro.ro/explore.content.v1/content/snippets/RO/ro-RO?__t=1771304505207:0
+[    2295ms] [WARNING] Error in component SnippetStore: Could not get snippets e: HTTP Request failed with status 404
+    at https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:13850
+    at f (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:1194)
+    at Generator.<anonymous> (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:2536)
+    at Generator.next (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:1623)
+    at T (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:7097)
+    at i (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:14264) @ https://produse.metro.ro/cia/promotion-ui/app/204.7591836dd1c7c17c95c2.js:0
+[    2305ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/cia/promotion-ui/app/2278.ca8adcf9c380805dca91.js:27
+[    2361ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://produse.metro.ro/explore.catalogues.v1/country/RO?type=Non-Food&storeid=00015&__t=1771304505268:0
+[    2363ms] [WARNING] Error in component CatalogueStore: Loading of catalogues failed. e: 404 ()
+    at XMLHttpRequest.<anonymous> (https://produse.metro.ro/cia/promotion-ui/app/860.54b61e84fa85023f61ef.js:1:12604)
+    at XMLHttpRequest.handleResponse (https://produse.metro.ro/cia/promotion-ui/app/2278.ca8adcf9c380805dca91.js:28:19250) @ https://produse.metro.ro/cia/promotion-ui/app/204.7591836dd1c7c17c95c2.js:0
+[    2433ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/articlesearch-ui/static/app/1614.b3cc51787f616eac9d52.js:0
+[    2542ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[    2542ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[    2542ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[    2550ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[    2550ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[    2552ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[    2552ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[    2674ms] [ERROR] Refused to create a worker from 'blob:https://idam.metro.ro/04470688-4b84-4724-aa9b-c8af93dd1176' because it violates the following Content Security Policy directive: "child-src 'self'". Note that 'worker-src' was not explicitly set, so 'child-src' is used as a fallback.
+ @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0

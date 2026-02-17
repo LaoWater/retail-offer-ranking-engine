@@ -36,6 +36,30 @@ TARGET_IMPRESSIONS = 500_000
 TARGET_REDEMPTION_RATE = 0.05  # 5% of impressions
 
 # ---------------------------------------------------------------------------
+# Purchase mode — dual-mode checkout
+# Metro card holders choose at checkout: "business" or "individual" (personal)
+# ~85-90% of orders are business purchases, ~10-15% are individual/personal
+# (e.g., buying groceries for their own family using the Metro card)
+# ---------------------------------------------------------------------------
+PURCHASE_MODE_DIST = {
+    "business": 0.87,
+    "individual": 0.13,
+}
+
+# Individual purchase behavior differs from business:
+# - Smaller basket sizes (household quantities, not wholesale)
+# - Almost always tier 1 pricing (single units)
+# - Higher fresh food ratio (buying for family meals)
+# - Different category mix (more consumer-oriented)
+INDIVIDUAL_PURCHASE_PROFILE = {
+    "basket_size_multiplier": 0.20,       # ~20% of business basket size
+    "tier2_probability": 0.05,            # rarely buy in case quantities
+    "tier3_probability": 0.01,            # almost never buy bulk as individual
+    "fresh_ratio_boost": 1.3,             # more fresh food for family
+    "quantity_range": (1, 3),             # household quantities
+}
+
+# ---------------------------------------------------------------------------
 # Business type distribution (B2B only — no consumers)
 # ---------------------------------------------------------------------------
 BUSINESS_TYPE_DIST = {
@@ -303,33 +327,35 @@ BUSINESS_PROFILES = {
 }
 
 # ---------------------------------------------------------------------------
-# Product categories (21 wholesale categories: 13 food, 8 non-food)
+# Product categories (21 categories: 13 food ~90%, 8 non-food ~10%)
+# Fish/seafood and meat are Metro Romania's flagship departments
 # ---------------------------------------------------------------------------
 CATEGORIES = [
-    # Food (~70%)
-    ("meat_poultry", 0.10),
-    ("dairy_eggs", 0.09),
-    ("fruits_vegetables", 0.09),
-    ("beverages_non_alcoholic", 0.07),
-    ("bakery_pastry", 0.06),
+    # Food (~90% of assortment — Metro is overwhelmingly food-focused)
+    # Fish/seafood and meat are Metro Romania's signature categories
+    ("meat_poultry", 0.14),              # Metro's butchery is a flagship department
+    ("seafood", 0.10),                   # Fish is #1 in Metro's app — sushi restaurants rely on Metro imports
+    ("dairy_eggs", 0.10),
+    ("fruits_vegetables", 0.10),
+    ("beverages_non_alcoholic", 0.08),
+    ("bakery_pastry", 0.07),
     ("frozen_foods", 0.06),
     ("grocery_staples", 0.06),
-    ("beverages_alcoholic", 0.05),
-    ("seafood", 0.04),
+    ("beverages_alcoholic", 0.06),
     ("confectionery_snacks", 0.04),
+    ("deli_charcuterie", 0.04),
     ("condiments_spices", 0.03),
-    ("deli_charcuterie", 0.03),
     ("coffee_tea", 0.03),
-    # Non-Food (~30%)
-    ("cleaning_detergents", 0.05),
-    ("kitchen_utensils_tableware", 0.04),
-    ("horeca_equipment", 0.04),
-    ("paper_packaging", 0.03),
-    ("personal_care_hygiene", 0.03),
-    ("household_goods", 0.02),
-    ("office_supplies", 0.02),
-    ("electronics_small_appliances", 0.02),
-]
+    # Non-Food (~10% — "first line" assortment, not deep)
+    ("cleaning_detergents", 0.02),
+    ("kitchen_utensils_tableware", 0.02),
+    ("horeca_equipment", 0.015),
+    ("paper_packaging", 0.015),
+    ("personal_care_hygiene", 0.01),
+    ("household_goods", 0.005),
+    ("office_supplies", 0.005),
+    ("electronics_small_appliances", 0.005),
+]  # Weights sum to ~1.0 (normalized at runtime)
 
 CATEGORY_NAMES = [c[0] for c in CATEGORIES]
 CATEGORY_WEIGHTS = [c[1] for c in CATEGORIES]
@@ -350,7 +376,7 @@ SUBCATEGORIES = {
     "frozen_foods": ["frozen_vegetables", "frozen_meals", "ice_cream", "frozen_proteins", "frozen_pizza"],
     "grocery_staples": ["rice", "pasta", "flour", "sunflower_oil", "sugar", "polenta_mamaliga", "canned_goods", "conserve"],
     "beverages_alcoholic": ["beer", "wine", "spirits_tuica", "spirits_palinca", "vodka", "whisky"],
-    "seafood": ["crap", "pastrav", "salmon", "shrimp", "preserved_fish"],
+    "seafood": ["crap", "pastrav", "salmon", "shrimp", "preserved_fish", "sushi_grade", "cod", "tuna", "calamari", "sardines", "mackerel"],
     "confectionery_snacks": ["chocolate", "candy", "chips", "crackers", "nuts", "biscuits"],
     "condiments_spices": ["ketchup", "mustard", "mayo", "sauces", "spices", "bors_liquid"],
     "deli_charcuterie": ["ham", "salami_sibiu", "slanina", "olives", "muraturi", "sunca_praga"],
@@ -756,6 +782,7 @@ FEATURE_COLUMNS = [
     "tier2_purchase_ratio",
     "tier3_purchase_ratio",
     "fresh_category_ratio",
+    "business_order_ratio",
     # Offer features
     "discount_depth",
     "margin_impact",

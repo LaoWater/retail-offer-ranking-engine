@@ -33,7 +33,7 @@ def build_customer_features(conn, reference_date):
       - promo_affinity, avg_basket_size, avg_basket_quantity, avg_order_value
       - avg_discount_depth
       - tier2_purchase_ratio, tier3_purchase_ratio, avg_tier_savings_pct
-      - fresh_category_ratio
+      - fresh_category_ratio, business_order_ratio
       - category_entropy, top_3_categories
       - preferred_shopping_day, days_between_visits_avg
       - loyalty_tier, business_type, business_subtype
@@ -104,6 +104,16 @@ def build_customer_features(conn, reference_date):
               AND JULIANDAY(o.order_timestamp) > JULIANDAY(:ref) - 90
             GROUP BY o.customer_id
         ),
+        purchase_mode_stats AS (
+            SELECT
+                o.customer_id,
+                CAST(SUM(CASE WHEN o.purchase_mode = 'business' THEN 1 ELSE 0 END) AS REAL)
+                    / MAX(COUNT(*), 1) AS business_order_ratio
+            FROM orders o
+            WHERE JULIANDAY(o.order_timestamp) <= JULIANDAY(:ref)
+              AND JULIANDAY(o.order_timestamp) > JULIANDAY(:ref) - 90
+            GROUP BY o.customer_id
+        ),
         visit_pattern AS (
             SELECT
                 o.customer_id,
@@ -136,6 +146,7 @@ def build_customer_features(conn, reference_date):
             COALESCE(ts.tier3_purchase_ratio, 0.0) AS tier3_purchase_ratio,
             COALESCE(ts.avg_tier_savings_pct, 0.0) AS avg_tier_savings_pct,
             COALESCE(fs.fresh_category_ratio, 0.0) AS fresh_category_ratio,
+            COALESCE(pm.business_order_ratio, 1.0) AS business_order_ratio,
             vp.preferred_shopping_day,
             CASE WHEN os.frequency > 1
                  THEN COALESCE(os.recency_days, 90.0) / MAX(os.frequency - 1, 1)
@@ -150,6 +161,7 @@ def build_customer_features(conn, reference_date):
         LEFT JOIN promo_stats ps ON c.customer_id = ps.customer_id
         LEFT JOIN tier_stats ts ON c.customer_id = ts.customer_id
         LEFT JOIN fresh_stats fs ON c.customer_id = fs.customer_id
+        LEFT JOIN purchase_mode_stats pm ON c.customer_id = pm.customer_id
         LEFT JOIN visit_pattern vp ON c.customer_id = vp.customer_id
     """, {"ref": reference_date})
     conn.commit()

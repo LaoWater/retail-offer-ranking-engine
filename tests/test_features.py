@@ -28,6 +28,7 @@ class TestCustomerFeatures:
             "business_type", "business_subtype", "reference_date",
             "tier2_purchase_ratio", "tier3_purchase_ratio",
             "avg_tier_savings_pct", "fresh_category_ratio",
+            "business_order_ratio",
         }
         assert expected.issubset(columns)
 
@@ -73,6 +74,12 @@ class TestCustomerFeatures:
         df = pd.read_sql("SELECT fresh_category_ratio FROM customer_features", conn)
         assert (df["fresh_category_ratio"] >= 0).all()
         assert (df["fresh_category_ratio"] <= 1).all()
+
+    def test_business_order_ratio_bounded(self, conn, run_date):
+        build_customer_features(conn, run_date)
+        df = pd.read_sql("SELECT business_order_ratio FROM customer_features", conn)
+        assert (df["business_order_ratio"] >= 0).all()
+        assert (df["business_order_ratio"] <= 1).all()
 
     def test_all_customers_present(self, conn, run_date):
         build_customer_features(conn, run_date)

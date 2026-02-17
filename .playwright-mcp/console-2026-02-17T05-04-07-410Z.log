@@ -1,0 +1,32 @@
+[    1560ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1560ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1560ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1560ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    2155ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    2155ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    2155ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    2155ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    2608ms] [ERROR] Refused to create a worker from 'blob:https://idam.metro.ro/25ca32c9-37db-4045-9c02-e372ce36c6bd' because it violates the following Content Security Policy directive: "child-src 'self'". Note that 'worker-src' was not explicitly set, so 'child-src' is used as a fallback.
+ @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    3272ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    3272ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    3272ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    3272ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    4324ms] [ERROR] Refused to create a worker from 'blob:https://idam.metro.ro/d7a26db7-8d41-4bdf-9dfb-ac6502d932ea' because it violates the following Content Security Policy directive: "child-src 'self'". Note that 'worker-src' was not explicitly set, so 'child-src' is used as a fallback.
+ @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    4756ms] TypeError: Cannot read properties of null (reading 'addEventListener')
+    at r (https://cdn.metro-online.com/bundles/theme-js.js?v=M6NrHJrwEocYfnp4XEdLj07I7zw1LFKQ0SxZaAFViLQ1&r=2:35:185)
+    at https://cdn.metro-online.com/bundles/theme-js.js?v=M6NrHJrwEocYfnp4XEdLj07I7zw1LFKQ0SxZaAFViLQ1&r=2:35:355
+    at NodeList.forEach (<anonymous>)
+    at i (https://cdn.metro-online.com/bundles/theme-js.js?v=M6NrHJrwEocYfnp4XEdLj07I7zw1LFKQ0SxZaAFViLQ1&r=2:35:312)
+    at HTMLDocument.t (https://cdn.metro-online.com/bundles/theme-js.js?v=M6NrHJrwEocYfnp4XEdLj07I7zw1LFKQ0SxZaAFViLQ1&r=2:35:638)
+    at https://cdn.metro-online.com/bundles/theme-js.js?v=M6NrHJrwEocYfnp4XEdLj07I7zw1LFKQ0SxZaAFViLQ1&r=2:53:468
+    at Array.forEach (<anonymous>)
+    at i (https://cdn.metro-online.com/bundles/theme-js.js?v=M6NrHJrwEocYfnp4XEdLj07I7zw1LFKQ0SxZaAFViLQ1&r=2:53:192)
+    at https://cdn.metro-online.com/bundles/theme-js.js?v=M6NrHJrwEocYfnp4XEdLj07I7zw1LFKQ0SxZaAFViLQ1&r=2:53:1093
+[   42616ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   42616ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   42616ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   42616ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   43669ms] [ERROR] Refused to create a worker from 'blob:https://idam.metro.ro/56f8411b-0d42-4f79-838b-9139d1d1024c' because it violates the following Content Security Policy directive: "child-src 'self'". Note that 'worker-src' was not explicitly set, so 'child-src' is used as a fallback.
+ @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0

@@ -35,6 +35,7 @@ from src.config import (
     BRANDS_PER_CATEGORY, SEASONAL_EVENTS, WEEKLY_PATTERNS,
     TIER_DISCOUNT_RANGES, TIER_QUANTITY_THRESHOLDS,
     OFFER_TYPE_DIST, CAMPAIGN_TYPE_DIST, CHANNEL_DIST,
+    PURCHASE_MODE_DIST, INDIVIDUAL_PURCHASE_PROFILE,
     DB_PATH, DATA_DIR, MODELS_DIR, LOGS_DIR,
 )
 from src.db import get_connection, init_db
@@ -439,9 +440,19 @@ class MetroDataGenerator:
 
                     order_id += 1
 
-                    # Basket size (varies by subtype)
+                    # Determine purchase mode: business (~87%) or individual (~13%)
+                    purchase_mode = self.rng.choice(
+                        list(PURCHASE_MODE_DIST.keys()),
+                        p=list(PURCHASE_MODE_DIST.values()),
+                    )
+                    is_individual = purchase_mode == "individual"
+
+                    # Basket size (varies by subtype; much smaller for individual)
                     basket_mean = profile["basket_size_mean"]
                     basket_std = profile["basket_size_std"]
+                    if is_individual:
+                        basket_mean = max(3, int(basket_mean * INDIVIDUAL_PURCHASE_PROFILE["basket_size_multiplier"]))
+                        basket_std = max(2, int(basket_std * 0.5))
                     n_items = max(1, int(self.rng.normal(basket_mean, basket_std)))
 
                     # Select products
@@ -462,18 +473,34 @@ class MetroDataGenerator:
                         prod_id = int(self.rng.choice(prods_in_cat))
                         pinfo = product_info[prod_id]
 
-                        # Wholesale quantities by business type
-                        quantity = self._get_wholesale_quantity(bt, sub, chosen_cat)
+                        # Quantities depend on purchase mode
+                        if is_individual:
+                            # Household quantities — 1-3 units, almost always tier 1
+                            lo, hi = INDIVIDUAL_PURCHASE_PROFILE["quantity_range"]
+                            quantity = int(self.rng.integers(lo, hi + 1))
+                        else:
+                            # Wholesale quantities by business type
+                            quantity = self._get_wholesale_quantity(bt, sub, chosen_cat)
 
                         # Determine tier applied
                         tier_applied = 1
                         unit_price = pinfo["tier1_price"]
-                        if quantity >= pinfo["tier3_min_qty"]:
-                            tier_applied = 3
-                            unit_price = pinfo["tier3_price"]
-                        elif quantity >= pinfo["tier2_min_qty"]:
-                            tier_applied = 2
-                            unit_price = pinfo["tier2_price"]
+                        if is_individual:
+                            # Individual purchases rarely hit tier thresholds
+                            r = self.rng.random()
+                            if r < INDIVIDUAL_PURCHASE_PROFILE["tier3_probability"] and quantity >= pinfo["tier3_min_qty"]:
+                                tier_applied = 3
+                                unit_price = pinfo["tier3_price"]
+                            elif r < INDIVIDUAL_PURCHASE_PROFILE["tier2_probability"] and quantity >= pinfo["tier2_min_qty"]:
+                                tier_applied = 2
+                                unit_price = pinfo["tier2_price"]
+                        else:
+                            if quantity >= pinfo["tier3_min_qty"]:
+                                tier_applied = 3
+                                unit_price = pinfo["tier3_price"]
+                            elif quantity >= pinfo["tier2_min_qty"]:
+                                tier_applied = 2
+                                unit_price = pinfo["tier2_price"]
 
                         # Small price variation
                         unit_price = round(
@@ -533,6 +560,7 @@ class MetroDataGenerator:
                         round(order_total_before_tier, 2),
                         order_total_qty,
                         items_in_this_order,
+                        purchase_mode,
                         payment,
                     ))
 
@@ -592,7 +620,7 @@ class MetroDataGenerator:
 
     def _flush_orders(self, conn, order_rows, item_rows):
         conn.executemany(
-            "INSERT INTO orders (order_id, customer_id, store_id, order_timestamp, total_amount, total_amount_before_tier, total_quantity, num_items, payment_method) VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO orders (order_id, customer_id, store_id, order_timestamp, total_amount, total_amount_before_tier, total_quantity, num_items, purchase_mode, payment_method) VALUES (?,?,?,?,?,?,?,?,?,?)",
             order_rows,
         )
         conn.executemany(
@@ -1063,6 +1091,14 @@ class MetroDataGenerator:
             "SELECT business_type, COUNT(*) FROM customers GROUP BY business_type ORDER BY COUNT(*) DESC"
         )
         logger.info("  Business types:")
+        for row in cursor:
+            logger.info(f"    {row[0]:15s}: {row[1]:>8,}")
+
+        # Purchase mode
+        cursor = conn.execute(
+            "SELECT purchase_mode, COUNT(*) FROM orders GROUP BY purchase_mode ORDER BY COUNT(*) DESC"
+        )
+        logger.info("  Purchase mode:")
         for row in cursor:
             logger.info(f"    {row[0]:15s}: {row[1]:>8,}")
 

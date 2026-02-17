@@ -4,10 +4,11 @@ A production-realistic personalized offer recommendation system replicating **Me
 
 ## Research Findings — Metro Romania's Real Business
 
-### Metro Is B2B-Only
+### Metro Is B2B-Only (with Dual-Mode Checkout)
 - Cannot enter without a **Metro Card** linked to a registered business (CUI/CIF required)
 - **100% of transactions are card-linked** — complete purchase history for every customer
 - This is a wholesale cash-and-carry, not a consumer supermarket
+- **Dual-mode purchasing:** Card holders choose at checkout — "business" (~87%) or "individual" (~13%, personal/family purchases with household quantities)
 
 ### Customer Segments
 | Segment | ~Share | Who They Are |
@@ -29,9 +30,9 @@ Every product in Metro has 2-3 price tiers. This is **not a promotion** — it's
 - Tier 3: typically 15-35% off (max ~40%)
 - Thresholds vary: units for packaged goods, kg for fresh products
 
-### Product Assortment (~70% Food / ~30% Non-Food)
-- **Food:** Meat, dairy (telemea, cascaval), produce, bakery, beverages, frozen, staples (sunflower oil, mamaliga flour), seafood (Christmas carp), deli (Sibiu salami, slanina), confectionery, coffee
-- **Non-food:** Cleaning/detergents, kitchen utensils, HoReCa equipment, paper/packaging, personal care, office supplies
+### Product Assortment (~90% Food / ~10% Non-Food)
+- **Food (flagship: fish/seafood and meat):** Fish/seafood is #1 in Metro's app (sushi restaurants rely on Metro's imports). Meat & poultry has professional butchery. Plus dairy (telemea, cascaval), produce, bakery, beverages, frozen, staples (sunflower oil, mamaliga flour), deli (Sibiu salami, slanina), confectionery, coffee
+- **Non-food (~10%, "first line" only):** Cleaning/detergents, kitchen utensils, basic HoReCa equipment, paper/packaging — not deep assortment
 - **Own brands:** METRO Chef, METRO Professional, aro, Rioba, Horeca Select, H-Line
 
 ### Promotion Types (Layered on Top of Tiered Pricing)
@@ -56,8 +57,8 @@ Two-stage recommender (same pattern as YouTube, Amazon, Netflix, Metro):
 
 ```
 Synthetic Data (50K customers, 10K products, 200 offers)
-    → Feature Engineering (16 features: RFM, promo affinity, interaction signals)
-    → Candidate Retrieval (~200 offers/customer via 4 strategies)
+    → Feature Engineering (23 features: RFM, tier ratios, promo affinity, interaction signals)
+    → Candidate Retrieval (~200 offers/customer via 7 strategies)
     → Supervised Ranking (LR/LightGBM → P(redemption))
     → Top-10 Recommendations per customer
     → API serving + Interactive dashboard
@@ -85,7 +86,7 @@ pytest tests/ -v                     # Run tests
 | Config | `src/config.py` | Single source of truth — segments, categories, tiered pricing, all parameters |
 | Data Generation | `src/generate_data.py` | Synthetic Metro Romania data with realistic B2B patterns |
 | Feature Engineering | `src/features.py` | RFM, promo affinity, category entropy, interaction features |
-| Candidate Generation | `src/candidates.py` | 4 strategies: category affinity, segment popularity, repeat purchase, high margin |
+| Candidate Generation | `src/candidates.py` | 7 strategies: category affinity, business type popularity, repeat purchase, high margin, tier upgrade, cross-sell, own brand switch |
 | Ranker Training | `src/train_ranker.py` | LR + LightGBM, auto-selects best model by AUC |
 | Scoring | `src/score_ranker.py` | Score candidates, rank, write top-10 per customer |
 | Pipeline | `src/daily_run.py` | Single-command orchestration |
@@ -111,7 +112,9 @@ Target: +5-10% NDCG@10 over Phase 1.
 ## Key Design Decisions
 
 - **B2B segments only** — HoReCa, Traders, SCO, Freelancers (no consumer segments)
+- **Dual-mode checkout** — business (~87%) vs individual (~13%) purchase modes
 - **Tiered pricing is structural** — encoded in `products` table, not in offers
+- **Food-dominant** — ~90% food (fish/seafood and meat as flagship), ~10% non-food
 - **Romania-specific data** — Romanian brands, RON currency, local product names
 - **Batch-first** — daily pipeline precomputes recommendations (mirrors Metro's original architecture)
 - **SQLite** — zero infrastructure, full pipeline runs locally in minutes

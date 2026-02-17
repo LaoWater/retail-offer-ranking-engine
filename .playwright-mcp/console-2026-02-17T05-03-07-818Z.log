@@ -1,0 +1,37 @@
+[     813ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[     813ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[     813ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[     813ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[    1859ms] [ERROR] Refused to create a worker from 'blob:https://idam.metro.ro/8c3492c6-eec7-40f9-ab9b-884058a58e24' because it violates the following Content Security Policy directive: "child-src 'self'". Note that 'worker-src' was not explicitly set, so 'child-src' is used as a fallback.
+ @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   14146ms] ReferenceError: fbq is not defined
+    at <anonymous>:1:1
+    at f.ba (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:227:229)
+    at f.ka (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:226:427)
+    at f.Y (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:224:407)
+    at f.F (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:222:445)
+    at f.write (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:222:70)
+    at f (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:229:215)
+    at e (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:228:279)
+    at q.streams (https://www.googletagmanager.com/gtm.js?id=GTM-WV3QJWR:230:30)
+    at https://www.googletagmanager.com/gtm.js?id=GTM-MPRL49B&gtm=4e62c0h2:1041:300
+[   14147ms] Object
+[   14482ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14485ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14494ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14494ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14495ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14514ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14515ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14516ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14540ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   14572ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   14572ms] [WARNING] The deviceorientation events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   14572ms] [ERROR] Permissions policy violation: accelerometer is not allowed in this document. @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   14572ms] [WARNING] The devicemotion events are blocked by permissions policy. See https://github.com/w3c/webappsec-permissions-policy/blob/master/features.md#sensor-features @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   15531ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   15616ms] [ERROR] Refused to create a worker from 'blob:https://idam.metro.ro/eea0382d-ac02-4aa8-afa5-aee1de144d84' because it violates the following Content Security Policy directive: "child-src 'self'". Note that 'worker-src' was not explicitly set, so 'child-src' is used as a fallback.
+ @ https://idam.metro.ro/MSbVtf/Gt1/g0o/hDNPzBsN/7DE7JLh3iYXYNGSOXu/fiIGKFw/chY2XmpI/Kn0B:0
+[   15702ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   15703ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0
+[   15709ms] [WARNING] The provided value 'auto' is not a valid enum value of type XMLHttpRequestResponseType. @ https://produse.metro.ro/searchdiscover/pdp-ui/static/app/3994.6b0124cc4617a99e1554.js:0

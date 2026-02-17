@@ -19,7 +19,18 @@
       "WebFetch(domain:www.metro.co.in)",
       "WebFetch(domain:www.ad-hoc-news.de)",
       "WebFetch(domain:www.metro.ro)",
-      "WebFetch(domain:freiheit.com)"
+      "WebFetch(domain:freiheit.com)",
+      "WebFetch(domain:encycolorpedia.com)",
+      "WebFetch(domain:logotyp.us)",
+      "WebFetch(domain:whatthelogo.com)",
+      "WebFetch(domain:onix-systems.com)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_close",
+      "Bash(python3:*)",
+      "Bash(npm create vite:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

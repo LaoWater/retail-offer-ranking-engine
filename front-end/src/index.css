@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-metro-blue: #003B7E;
+  --color-metro-blue-dark: #002B5E;
+  --color-metro-blue-light: #0055B8;
+  --color-metro-yellow: #FFD100;
+  --color-metro-yellow-dark: #E6BC00;
+  --color-metro-green: #00A650;
+  --color-metro-red: #E63312;
+  --color-metro-orange: #F47920;
+  --color-metro-gray-50: #F5F5F5;
+  --color-metro-gray-100: #EEEEEE;
+  --color-metro-gray-200: #E0E0E0;
+  --color-metro-gray-300: #BDBDBD;
+  --color-metro-gray-400: #9E9E9E;
+  --color-metro-gray-500: #666666;
+  --color-metro-gray-700: #424242;
+  --color-metro-gray-900: #1A1A1A;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: #F5F5F5;
+  color: #1A1A1A;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.product-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 30px rgba(0, 59, 126, 0.12), 0 0 0 1px rgba(0, 59, 126, 0.08);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #BDBDBD;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9E9E9E;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #EEEEEE 25%, #E0E0E0 50%, #EEEEEE 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
