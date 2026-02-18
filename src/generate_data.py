@@ -94,7 +94,7 @@ class MetroDataGenerator:
         self.target_order_items = target_order_items
         self.target_impressions = target_impressions
 
-        self.end_date = date(2026, 2, 11)
+        self.end_date = date.today()
         self.start_date = self.end_date - timedelta(days=history_days)
 
         self._customers_df = None
@@ -667,6 +667,9 @@ class MetroDataGenerator:
         channels = list(CHANNEL_DIST.keys())
         channel_probs = list(CHANNEL_DIST.values())
 
+        # Build a price lookup so fixed_amount discounts never exceed the product price
+        price_lookup = products.set_index("product_id")["tier1_price"].to_dict()
+
         rows = []
         for i in range(self.n_offers):
             oid = i + 1
@@ -684,7 +687,10 @@ class MetroDataGenerator:
             if otype == "percentage":
                 dvalue = round(float(self.rng.uniform(10, 40)), 0)
             elif otype == "fixed_amount":
-                dvalue = round(float(self.rng.uniform(5, 50)), 2)  # RON
+                # Cap at 40% of the product's tier1 price so the discounted price is always positive
+                tier1 = price_lookup.get(pid, 20.0)
+                max_discount = tier1 * 0.40
+                dvalue = round(float(self.rng.uniform(min(2.0, max_discount * 0.5), max_discount)), 2)
             elif otype == "buy_x_get_y":
                 buy_qty = int(self.rng.choice([3, 5, 6, 10]))
                 get_qty = int(self.rng.choice([1, 1, 2]))
@@ -703,10 +709,9 @@ class MetroDataGenerator:
             ctype = self.rng.choice(campaign_types, p=campaign_probs)
             channel = self.rng.choice(channels, p=channel_probs)
 
-            # Stagger start dates
+            # Stagger start dates — allow offers to be active up to end_date
             offer_duration = int(self.rng.integers(7, 29))
-            latest_start = self.history_days - offer_duration
-            start_offset = int(self.rng.integers(0, max(1, latest_start)))
+            start_offset = int(self.rng.integers(0, self.history_days))
             sdate = self.start_date + timedelta(days=start_offset)
             edate = sdate + timedelta(days=offer_duration)
 

@@ -23,7 +23,7 @@ export default function AlgorithmToggle() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-metro-green animate-pulse" />
-            <span className="text-sm font-semibold text-metro-gray-900">
+            <span className="text-sm font-semibold text-metro-gray-900 font-heading">
               Phase 1 — ML Clasic (LightGBM)
             </span>
           </div>

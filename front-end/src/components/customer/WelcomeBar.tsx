@@ -21,7 +21,7 @@ export default function WelcomeBar({ customerId }: Props) {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm">
-      <h2 className="text-xl font-bold text-metro-gray-900">
+      <h2 className="text-xl font-bold text-metro-gray-900 font-heading">
         Bine ai venit, {profile.business_name}!
       </h2>
 

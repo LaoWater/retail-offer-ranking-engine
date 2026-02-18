@@ -19,7 +19,7 @@ export default function DriftMonitor() {
   return (
     <div className="glass rounded-2xl p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-metro-gray-900">Drift Monitor (PSI)</h3>
+        <h3 className="text-lg font-bold text-metro-gray-900 font-heading">Drift Monitor (PSI)</h3>
         {drift?.retrain_recommended && (
           <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-metro-red/10 text-metro-red text-xs font-semibold">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,10 +35,10 @@ export default function DriftMonitor() {
           {drift.entries.map((entry) => (
             <div
               key={entry.feature}
-              className={`rounded-xl p-3 border ${
-                entry.severity === 'alert' ? 'border-metro-red/30 bg-metro-red/5' :
-                entry.severity === 'warn' ? 'border-metro-orange/30 bg-metro-orange/5' :
-                'border-metro-green/30 bg-metro-green/5'
+              className={`rounded-xl p-3 border-l-4 border ${
+                entry.severity === 'alert' ? 'border-l-metro-red border-metro-red/20 bg-metro-red/5' :
+                entry.severity === 'warn' ? 'border-l-metro-orange border-metro-orange/20 bg-metro-orange/5' :
+                'border-l-metro-green border-metro-green/20 bg-metro-green/5'
               }`}
             >
               <div className="text-xs text-metro-gray-500 truncate mb-1">

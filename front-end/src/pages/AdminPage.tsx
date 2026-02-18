@@ -8,7 +8,7 @@ export default function AdminPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-metro-gray-900">Admin ML Dashboard</h2>
+        <h2 className="text-2xl font-bold text-metro-gray-900 font-heading">Admin ML Dashboard</h2>
         <p className="text-sm text-metro-gray-500 mt-1">
           Control pipeline, monitorizare drift, si metrici model
         </p>

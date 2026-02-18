@@ -35,7 +35,7 @@ export default function CustomerPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <CustomerSelector selectedId={customerId} onSelect={setCustomerId} />
         {recData && (
-          <span className="text-xs text-metro-gray-500">
+          <span className="text-xs text-metro-gray-500 font-mono">
             Data: {recData.run_date}
           </span>
         )}
@@ -47,7 +47,7 @@ export default function CustomerPage() {
       {/* Recommendations section */}
       {customerId && (
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-metro-gray-900">
+          <h3 className="text-lg font-bold text-metro-gray-900 font-heading">
             Oferte personalizate pentru tine
           </h3>
 
@@ -93,12 +93,17 @@ export default function CustomerPage() {
       {/* Empty state */}
       {!customerId && (
         <div className="text-center py-20">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-metro-blue/10 mb-6">
-            <svg className="w-10 h-10 text-metro-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-metro-blue/5 mb-6">
+            {/* Stylized person + data dots SVG */}
+            <svg className="w-12 h-12 text-metro-blue" fill="none" stroke="currentColor" viewBox="0 0 48 48" strokeWidth={1.5}>
+              <circle cx="24" cy="14" r="7" />
+              <path strokeLinecap="round" d="M10 40c0-7.732 6.268-14 14-14s14 6.268 14 14" />
+              <circle cx="38" cy="10" r="2" fill="currentColor" opacity="0.3" />
+              <circle cx="42" cy="16" r="1.5" fill="currentColor" opacity="0.2" />
+              <circle cx="36" cy="5" r="1" fill="currentColor" opacity="0.15" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-metro-gray-900 mb-2">
+          <h2 className="text-xl font-bold text-metro-gray-900 mb-2 font-heading">
             Selecteaza un client METRO
           </h2>
           <p className="text-metro-gray-500 max-w-md mx-auto">

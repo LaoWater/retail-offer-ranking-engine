@@ -11,6 +11,7 @@ Usage:
 import json
 import os
 import sys
+import sqlite3
 import logging
 import threading
 from datetime import date, datetime, timedelta
@@ -87,8 +88,11 @@ class MetricsResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 def get_db():
-    """Dependency that provides a database connection."""
-    conn = get_connection()
+    """Dependency that provides a database connection (thread-safe for FastAPI)."""
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
     try:
         yield conn
     finally:
@@ -249,29 +253,8 @@ def get_batch_recommendations(
     }
 
 
-@app.get("/customers/{customer_id}")
-def get_customer_profile(customer_id: int, conn=Depends(get_db)):
-    """Get customer profile and feature summary."""
-    cust = conn.execute(
-        "SELECT * FROM customers WHERE customer_id = ?", (customer_id,)
-    ).fetchone()
-
-    if cust is None:
-        raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found")
-
-    feats = conn.execute(
-        "SELECT * FROM customer_features WHERE customer_id = ?", (customer_id,)
-    ).fetchone()
-
-    profile = dict(cust)
-    if feats:
-        profile["features"] = dict(feats)
-
-    return profile
-
-
 # ---------------------------------------------------------------------------
-# New endpoints for frontend
+# Customer endpoints — specific routes BEFORE parameterized route
 # ---------------------------------------------------------------------------
 
 @app.get("/customers/sample")
@@ -320,6 +303,27 @@ def search_customers(
     ).fetchall()
 
     return [dict(r) for r in rows]
+
+
+@app.get("/customers/{customer_id}")
+def get_customer_profile(customer_id: int, conn=Depends(get_db)):
+    """Get customer profile and feature summary."""
+    cust = conn.execute(
+        "SELECT * FROM customers WHERE customer_id = ?", (customer_id,)
+    ).fetchone()
+
+    if cust is None:
+        raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found")
+
+    feats = conn.execute(
+        "SELECT * FROM customer_features WHERE customer_id = ?", (customer_id,)
+    ).fetchone()
+
+    profile = dict(cust)
+    if feats:
+        profile["features"] = dict(feats)
+
+    return profile
 
 
 @app.get("/products/{product_id}")
@@ -384,6 +388,7 @@ def get_pipeline_runs(
     rows = conn.execute(
         """SELECT run_id, run_date, step, status, duration_seconds, metadata, created_at
            FROM pipeline_runs
+           WHERE status != 'started'
            ORDER BY run_id DESC
            LIMIT ?""",
         (limit,),

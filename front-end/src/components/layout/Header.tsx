@@ -1,20 +1,28 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 export default function Header() {
   const location = useLocation();
   const isAdmin = location.pathname === '/admin';
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-metro-blue text-white shadow-lg">
+    <header className={`sticky top-0 z-50 bg-metro-blue text-white transition-shadow duration-200 ${scrolled ? 'shadow-lg shadow-metro-blue-dark/30' : ''}`}>
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 no-underline">
           <div className="flex items-center">
-            <div className="bg-metro-yellow text-metro-blue font-black text-xl px-2 py-0.5 rounded">
+            <div className="bg-metro-yellow text-metro-blue font-heading font-black text-xl px-2.5 py-0.5 rounded border border-metro-yellow-dark/20">
               METRO
             </div>
           </div>
-          <span className="text-white/80 text-sm hidden sm:block">Romania</span>
+          <span className="text-white/80 text-sm hidden sm:block font-heading font-medium">Romania</span>
         </Link>
 
         {/* Navigation */}

@@ -15,7 +15,7 @@ export default function CustomerExplorer() {
 
   return (
     <div className="glass rounded-2xl p-6">
-      <h3 className="text-lg font-bold text-metro-gray-900 mb-4">Explorer Clienti</h3>
+      <h3 className="text-lg font-bold text-metro-gray-900 mb-4 font-heading">Explorer Clienti</h3>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -24,12 +24,12 @@ export default function CustomerExplorer() {
           placeholder="Cauta dupa nume..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="flex-1 px-4 py-2 rounded-lg border border-metro-gray-200 text-sm outline-none focus:border-metro-blue-light"
+          className="flex-1 px-4 py-2 rounded-lg border border-metro-gray-200 text-sm outline-none focus:border-metro-blue-light transition-colors"
         />
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-4 py-2 rounded-lg border border-metro-gray-200 text-sm outline-none focus:border-metro-blue-light bg-white"
+          className="px-4 py-2 rounded-lg border border-metro-gray-200 text-sm outline-none focus:border-metro-blue-light bg-white transition-colors"
         >
           <option value="">Toate tipurile</option>
           <option value="horeca">HoReCa</option>
@@ -53,10 +53,10 @@ export default function CustomerExplorer() {
             </tr>
           </thead>
           <tbody>
-            {customers?.slice(0, 20).map((c) => (
+            {customers?.slice(0, 20).map((c, i) => (
               <tr
                 key={c.customer_id}
-                className="border-t border-metro-gray-100 hover:bg-metro-blue/3 cursor-pointer"
+                className={`border-t border-metro-gray-100 hover:bg-metro-blue/5 cursor-pointer transition-colors ${i % 2 === 1 ? 'bg-metro-gray-50/50' : ''}`}
                 onClick={() => navigate(`/?customer=${c.customer_id}`)}
               >
                 <td className="py-2.5 pr-3 font-mono text-xs text-metro-gray-500">{c.customer_id}</td>

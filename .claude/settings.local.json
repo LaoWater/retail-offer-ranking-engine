@@ -30,7 +30,9 @@
       "mcp__playwright__browser_close",
       "Bash(python3:*)",
       "Bash(npm create vite:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(sqlite3:*)"
     ]
   }
 }
