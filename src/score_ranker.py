@@ -6,6 +6,10 @@ and writes top-N recommendations per customer.
 """
 
 import logging
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import pandas as pd
@@ -46,7 +50,7 @@ def score_candidates(model, run_date, conn):
         "customer_id", "recency_days", "frequency", "monetary",
         "promo_affinity", "avg_basket_size", "category_entropy", "avg_discount_depth",
         "avg_basket_quantity", "tier2_purchase_ratio", "tier3_purchase_ratio",
-        "fresh_category_ratio",
+        "fresh_category_ratio", "business_order_ratio",
     ]
     cust_feats = cust_feats[[c for c in cust_feat_cols if c in cust_feats.columns]]
 
@@ -71,8 +75,16 @@ def score_candidates(model, run_date, conn):
     scored = scored.fillna(0)
 
     # Step 5: Predict P(redemption)
-    feature_cols = [c for c in FEATURE_COLUMNS if c in scored.columns]
-    X = scored[feature_cols].values.astype(np.float32)
+    missing_feature_cols = [c for c in FEATURE_COLUMNS if c not in scored.columns]
+    if missing_feature_cols:
+        logger.warning(
+            "Missing feature columns in scoring set; defaulting to 0.0: %s",
+            missing_feature_cols,
+        )
+        for col in missing_feature_cols:
+            scored[col] = 0.0
+
+    X = scored[FEATURE_COLUMNS].values.astype(np.float32)
     scores = model.predict_proba(X)[:, 1]
     scored["score"] = scores
 

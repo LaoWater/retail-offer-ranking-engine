@@ -4,16 +4,19 @@ FastAPI service for Metro Romania Personalized Offers Recommender.
 Serves precomputed recommendations via REST API.
 
 Usage:
-    python -m src.api
+    python src/api.py
     uvicorn src.api:app --host 0.0.0.0 --port 8000
 """
 
 import json
 import os
+import sys
 import logging
 import threading
 from datetime import date, datetime, timedelta
 from typing import List, Optional
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware

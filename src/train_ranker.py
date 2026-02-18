@@ -6,8 +6,12 @@ by validation AUC, and saves the winning model artifact.
 """
 
 import logging
+import os
+import sys
 import time
 from datetime import datetime, timedelta
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import pandas as pd
@@ -87,7 +91,7 @@ def build_training_set(conn, reference_date):
         "customer_id", "recency_days", "frequency", "monetary",
         "promo_affinity", "avg_basket_size", "category_entropy", "avg_discount_depth",
         "avg_basket_quantity", "tier2_purchase_ratio", "tier3_purchase_ratio",
-        "fresh_category_ratio",
+        "fresh_category_ratio", "business_order_ratio",
     ]
     cust_feats = cust_feats[[c for c in cust_feat_cols if c in cust_feats.columns]]
 
@@ -111,6 +115,16 @@ def build_training_set(conn, reference_date):
 
     # Fill NaN
     merged = merged.fillna(0)
+
+    # Guard against feature-config drift by materializing any missing model features.
+    missing_feature_cols = [c for c in FEATURE_COLUMNS if c not in merged.columns]
+    if missing_feature_cols:
+        logger.warning(
+            "Missing feature columns in training set; defaulting to 0.0: %s",
+            missing_feature_cols,
+        )
+        for col in missing_feature_cols:
+            merged[col] = 0.0
 
     # Extract features and labels
     X = merged[FEATURE_COLUMNS].values.astype(np.float32)

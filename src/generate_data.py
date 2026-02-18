@@ -9,16 +9,20 @@ Generates realistic B2B wholesale data with:
   - Seasonal and weekly cycles (Mon/Thu peaks for HoReCa)
 
 Usage:
-    python -m src.generate_data
-    python -m src.generate_data --customers 1000 --products 500 --offers 50
+    python src/generate_data.py
+    python src/generate_data.py --customers 1000 --products 500 --offers 50
 """
 
 import argparse
 import logging
+import os
+import sys
 import time
 import json
 import math
 from datetime import datetime, timedelta, date
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import pandas as pd

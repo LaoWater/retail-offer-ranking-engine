@@ -2,9 +2,13 @@
 Database connection utilities for Metro Recommender.
 """
 
+import os
+import sys
 import sqlite3
 import logging
 from contextlib import contextmanager
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import DB_PATH, SCHEMA_PATH, DATA_DIR
 

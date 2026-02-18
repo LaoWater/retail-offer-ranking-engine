@@ -10,14 +10,18 @@ Single-command orchestration of the entire recommendation pipeline:
   6. Evaluate
 
 Usage:
-    python -m src.daily_run --date 2026-02-11
+    python src/daily_run.py --date 2026-02-11
 """
 
 import argparse
 import json
 import logging
+import os
+import sys
 import time
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import RETRAIN_DAY_OF_WEEK, MODELS_DIR
 from src.db import get_connection
