@@ -3,6 +3,7 @@ import MetricsCards from '../components/admin/MetricsCards';
 import DriftMonitor from '../components/admin/DriftMonitor';
 import DatabaseStats from '../components/admin/DatabaseStats';
 import CustomerExplorer from '../components/admin/CustomerExplorer';
+import BehaviorSummary from '../components/admin/BehaviorSummary';
 
 export default function AdminPage() {
   return (
@@ -15,9 +16,10 @@ export default function AdminPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: Pipeline + Metrics */}
+        {/* Left column: Pipeline + Behavior + Metrics */}
         <div className="lg:col-span-2 space-y-6">
           <PipelineControl />
+          <BehaviorSummary />
           <MetricsCards />
           <DriftMonitor />
         </div>

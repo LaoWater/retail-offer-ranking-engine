@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import RETRAIN_DAY_OF_WEEK, MODELS_DIR
 from src.db import get_connection
+from src.simulate_day_behavior import simulate_day
 from src.features import build_customer_features, build_offer_features
 from src.candidates import generate_candidate_pool
 from src.train_ranker import train_ranker, load_model
@@ -50,6 +51,11 @@ def run_pipeline(run_date: str):
     logger.info("=" * 60)
 
     results = {}
+
+    # ---- Step 0: Simulate day behavior ----
+    _run_step(conn, run_date, "behavior",
+              lambda: simulate_day(conn, run_date),
+              results)
 
     # ---- Step 1: Build features ----
     _run_step(conn, run_date, "features", lambda: _step_features(conn, run_date), results)
@@ -97,7 +103,9 @@ def _run_step(conn, run_date, step_name, step_fn, results):
     try:
         result = step_fn()
         duration = time.time() - t0
-        _log_pipeline_run(conn, run_date, step_name, "completed", duration)
+        # Serialize dict results (e.g. evaluate metrics) as JSON metadata
+        metadata = json.dumps(result) if isinstance(result, dict) else None
+        _log_pipeline_run(conn, run_date, step_name, "completed", duration, metadata)
         results[step_name] = {"status": "completed", "duration": duration, "result": result}
         logger.info(f"  Completed in {duration:.1f}s")
         return result

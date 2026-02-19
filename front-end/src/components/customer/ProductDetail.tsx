@@ -131,7 +131,7 @@ export default function ProductDetail({ rec, onClose }: Props) {
 
                   {/* Name */}
                   <h3 className="text-xl font-bold text-metro-gray-900 mb-2">
-                    {rec.brand} {CATEGORY_DISPLAY[rec.category] || rec.category}
+                    {rec.brand} {rec.subcategory ? rec.subcategory.replace(/_/g, ' ') : CATEGORY_DISPLAY[rec.category] || rec.category}
                   </h3>
 
                   {/* Product code */}

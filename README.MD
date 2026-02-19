@@ -2,6 +2,13 @@
 
 A production-realistic personalized offer recommendation system replicating **Metro Cash & Carry Romania's** database, tiered pricing philosophy, and ML recommendation pipeline.
 
+## Running System
+I. Start back-end FastAPI: 
+python -m uvicorn src.api:app --host 0.0.0.0 --port 8000
+II. Start front-end:
+npm run dev
+
+
 ## Research Findings — Metro Romania's Real Business
 
 ### Metro Is B2B-Only (with Dual-Mode Checkout)

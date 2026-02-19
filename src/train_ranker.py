@@ -22,7 +22,7 @@ from lightgbm import LGBMClassifier
 
 from src.config import (
     SEED, FEATURE_COLUMNS, LGBM_PARAMS, NEGATIVE_SAMPLE_RATIO,
-    REDEMPTION_WINDOW_DAYS, MODELS_DIR,
+    REDEMPTION_WINDOW_DAYS, MODELS_DIR, BUSINESS_TYPE_ENCODING,
 )
 from src.features import build_interaction_features
 
@@ -87,11 +87,15 @@ def build_training_set(conn, reference_date):
 
     # Customer features
     cust_feats = pd.read_sql("SELECT * FROM customer_features", conn)
+    # Encode business_type as ordinal so the model has segment identity
+    cust_feats["business_type_encoded"] = (
+        cust_feats["business_type"].map(BUSINESS_TYPE_ENCODING).fillna(0).astype(int)
+    )
     cust_feat_cols = [
         "customer_id", "recency_days", "frequency", "monetary",
         "promo_affinity", "avg_basket_size", "category_entropy", "avg_discount_depth",
         "avg_basket_quantity", "tier2_purchase_ratio", "tier3_purchase_ratio",
-        "fresh_category_ratio", "business_order_ratio",
+        "fresh_category_ratio", "business_order_ratio", "business_type_encoded",
     ]
     cust_feats = cust_feats[[c for c in cust_feat_cols if c in cust_feats.columns]]
 

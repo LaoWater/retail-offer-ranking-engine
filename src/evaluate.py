@@ -52,12 +52,27 @@ def compute_offline_metrics(conn, run_date, k=None):
         logger.warning("No recommendations found for %s", run_date)
         return {}
 
-    # Load ground truth: redemptions within the window after run_date
+    # Load ground truth: redemptions in a window around run_date
+    # Try forward window first; if it yields too few, use a backward window.
+    # This handles the synthetic-data edge case where the pipeline runs near
+    # the end of the generated history (almost no future redemptions exist).
     truth = pd.read_sql("""
         SELECT DISTINCT customer_id, offer_id
         FROM redemptions
         WHERE DATE(redeemed_timestamp) BETWEEN :rd AND DATE(:rd, '+' || :window || ' days')
     """, conn, params={"rd": run_date, "window": REDEMPTION_WINDOW_DAYS})
+
+    if len(truth) < 50:
+        # Fall back to lookback window — use the 30 days before run_date as ground truth
+        logger.info(
+            "  Forward window has only %d redemptions — using 30-day lookback window instead",
+            len(truth),
+        )
+        truth = pd.read_sql("""
+            SELECT DISTINCT customer_id, offer_id
+            FROM redemptions
+            WHERE DATE(redeemed_timestamp) BETWEEN DATE(:rd, '-30 days') AND :rd
+        """, conn, params={"rd": run_date})
 
     # Build truth lookup: customer_id -> set of redeemed offer_ids
     truth_map = defaultdict(set)

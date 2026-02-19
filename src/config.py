@@ -783,6 +783,8 @@ FEATURE_COLUMNS = [
     "tier3_purchase_ratio",
     "fresh_category_ratio",
     "business_order_ratio",
+    # Segment identity — ordinal encoded (horeca=0, trader=1, sco=2, freelancer=3)
+    "business_type_encoded",
     # Offer features
     "discount_depth",
     "margin_impact",
@@ -797,6 +799,14 @@ FEATURE_COLUMNS = [
     "price_sensitivity_match",
     "business_type_match",
 ]
+
+# Ordinal encoding for business_type (used in train_ranker + score_ranker)
+BUSINESS_TYPE_ENCODING = {
+    "horeca": 0,
+    "trader": 1,
+    "sco": 2,
+    "freelancer": 3,
+}
 
 # LightGBM hyperparameters
 LGBM_PARAMS = {

@@ -3,6 +3,8 @@
 export interface OfferRecommendation {
   offer_id: number;
   product_id: number;
+  product_name: string;
+  subcategory: string | null;
   category: string;
   brand: string;
   offer_type: string;
@@ -143,6 +145,17 @@ export interface PipelineSimulateResponse {
   status: string;
   run_date: string;
   results: Record<string, { status: string; duration: number }>;
+}
+
+export interface BehaviorSummary {
+  run_date: string;
+  orders_generated: number;
+  impressions_shown: number;
+  redemptions_made: number;
+  redemption_rate: number;
+  orders_by_segment: Record<string, number>;
+  avg_basket_size: number;
+  top_category: string | null;
 }
 
 // Display helpers

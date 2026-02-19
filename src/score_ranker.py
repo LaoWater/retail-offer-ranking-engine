@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
-from src.config import TOP_N_RECOMMENDATIONS, FEATURE_COLUMNS
+from src.config import TOP_N_RECOMMENDATIONS, FEATURE_COLUMNS, BUSINESS_TYPE_ENCODING
 from src.features import build_interaction_features
 
 logger = logging.getLogger(__name__)
@@ -46,11 +46,14 @@ def score_candidates(model, run_date, conn):
 
     # Step 2: Load feature tables
     cust_feats = pd.read_sql("SELECT * FROM customer_features", conn)
+    cust_feats["business_type_encoded"] = (
+        cust_feats["business_type"].map(BUSINESS_TYPE_ENCODING).fillna(0).astype(int)
+    )
     cust_feat_cols = [
         "customer_id", "recency_days", "frequency", "monetary",
         "promo_affinity", "avg_basket_size", "category_entropy", "avg_discount_depth",
         "avg_basket_quantity", "tier2_purchase_ratio", "tier3_purchase_ratio",
-        "fresh_category_ratio", "business_order_ratio",
+        "fresh_category_ratio", "business_order_ratio", "business_type_encoded",
     ]
     cust_feats = cust_feats[[c for c in cust_feat_cols if c in cust_feats.columns]]
 

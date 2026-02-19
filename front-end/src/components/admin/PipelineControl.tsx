@@ -34,6 +34,7 @@ function InfoIcon({ tooltip }: { tooltip: string }) {
 
 /* ── step display names & descriptions ────────────────────────── */
 const STEP_INFO: Record<string, { label: string; description: string }> = {
+  behavior:   { label: 'Comportament', description: 'Genereaza comenzi, impresii si rascumparari noi pe baza recomandarilor zilei precedente' },
   features:   { label: 'Features',    description: 'Calcul RFM, afinitate categorii, ratii tier, etc. pentru toti clientii si ofertele' },
   model:      { label: 'Model',       description: 'Antrenare sau incarcare model ML (LightGBM / Logistic Regression)' },
   candidates: { label: 'Candidati',   description: 'Generare ~200 oferte candidate per client prin 7 strategii (afinitate, popularitate, repeat, etc.)' },

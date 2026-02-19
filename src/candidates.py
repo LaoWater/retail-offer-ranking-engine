@@ -61,30 +61,47 @@ def generate_candidate_pool(conn, run_date):
     for _, row in active_offers.iterrows():
         cat_to_offers[row["category"]].append(row["offer_id"])
 
-    # High-margin strategy
+    # High-margin offers per category (so we can filter by customer's top categories)
     active_offers["effective_margin"] = (
         active_offers["tier1_price"] * active_offers["margin"]
     )
-    high_margin_offers = (
-        active_offers.nlargest(CANDIDATE_STRATEGY_LIMITS["high_margin"], "effective_margin")["offer_id"]
-        .tolist()
+    # Pre-sort by margin within each category — used per-customer below
+    high_margin_by_cat = (
+        active_offers.sort_values("effective_margin", ascending=False)
+        .groupby("category")["offer_id"]
+        .apply(list)
+        .to_dict()
     )
 
     # Own brand offers (for own_brand_switch strategy)
     own_brand_offers = active_offers[active_offers["is_own_brand"] == 1]["offer_id"].tolist()
 
-    # Business type popularity: count impressions per offer per business_type
+    # Business subtype popularity: count impressions per offer per business_subtype
+    # Falls back to business_type if subtype has no data
     bt_popularity = pd.read_sql("""
+        SELECT c.business_subtype, i.offer_id, COUNT(*) AS imp_count
+        FROM impressions i
+        JOIN customers c ON i.customer_id = c.customer_id
+        GROUP BY c.business_subtype, i.offer_id
+    """, conn)
+    bt_pop_map = defaultdict(list)
+    for _, row in bt_popularity.iterrows():
+        bt_pop_map[row["business_subtype"]].append((row["offer_id"], row["imp_count"]))
+    for bt in bt_pop_map:
+        bt_pop_map[bt].sort(key=lambda x: -x[1])
+
+    # Fallback: type-level popularity
+    bt_type_popularity = pd.read_sql("""
         SELECT c.business_type, i.offer_id, COUNT(*) AS imp_count
         FROM impressions i
         JOIN customers c ON i.customer_id = c.customer_id
         GROUP BY c.business_type, i.offer_id
     """, conn)
-    bt_pop_map = defaultdict(list)
-    for _, row in bt_popularity.iterrows():
-        bt_pop_map[row["business_type"]].append((row["offer_id"], row["imp_count"]))
-    for bt in bt_pop_map:
-        bt_pop_map[bt].sort(key=lambda x: -x[1])
+    bt_type_pop_map = defaultdict(list)
+    for _, row in bt_type_popularity.iterrows():
+        bt_type_pop_map[row["business_type"]].append((row["offer_id"], row["imp_count"]))
+    for bt in bt_type_pop_map:
+        bt_type_pop_map[bt].sort(key=lambda x: -x[1])
 
     # Customer data
     customers = pd.read_sql("""
@@ -183,14 +200,13 @@ def generate_candidate_pool(conn, run_date):
             candidates = {}  # offer_id -> strategy
 
             # --- Strategy 1: Category affinity ---
+            # Only pull from the customer's actual top categories.
+            # Do NOT fall back to all categories — that is what causes SCO/freelancer
+            # customers to receive food recommendations they have no affinity for.
             limit = CANDIDATE_STRATEGY_LIMITS["category_affinity"]
             cat_candidates = []
             for cat in top_cats:
                 cat_candidates.extend(cat_to_offers.get(cat, []))
-            if len(cat_candidates) < limit:
-                for cat in cat_to_offers:
-                    if cat not in top_cats:
-                        cat_candidates.extend(cat_to_offers[cat])
             for oid in cat_candidates[:limit]:
                 if oid not in candidates and _is_eligible(
                     oid, bt, sub, store, ltier,
@@ -198,11 +214,14 @@ def generate_candidate_pool(conn, run_date):
                 ):
                     candidates[oid] = "category_affinity"
 
-            # --- Strategy 2: Business type popularity ---
+            # --- Strategy 2: Business subtype popularity (falls back to type) ---
             limit = CANDIDATE_STRATEGY_LIMITS["business_type_popular"]
-            bt_offers = bt_pop_map.get(bt, [])
+            # Try subtype first for more specific recommendations
+            sub_offers = bt_pop_map.get(sub, [])
+            if len(sub_offers) < limit:
+                sub_offers = sub_offers + bt_type_pop_map.get(bt, [])
             count = 0
-            for oid, _ in bt_offers:
+            for oid, _ in sub_offers:
                 if oid in active_offer_set and oid not in candidates:
                     if _is_eligible(
                         oid, bt, sub, store, ltier,
@@ -229,15 +248,25 @@ def generate_candidate_pool(conn, run_date):
                         if count >= limit:
                             break
 
-            # --- Strategy 4: High margin ---
-            for oid in high_margin_offers:
-                if oid not in candidates and _is_eligible(
-                    oid, bt, sub, store, ltier,
-                    offer_store_scope, offer_bt_scope, offer_sub_scope, offer_lt_scope
-                ):
-                    candidates[oid] = "high_margin"
+            # --- Strategy 4: High margin within customer's top categories ---
+            limit = CANDIDATE_STRATEGY_LIMITS["high_margin"]
+            count = 0
+            # First pass: top categories the customer prefers
+            cats_for_margin = top_cats if top_cats else list(high_margin_by_cat.keys())
+            for cat in cats_for_margin:
+                for oid in high_margin_by_cat.get(cat, []):
+                    if count >= limit:
+                        break
+                    if oid not in candidates and _is_eligible(
+                        oid, bt, sub, store, ltier,
+                        offer_store_scope, offer_bt_scope, offer_sub_scope, offer_lt_scope
+                    ):
+                        candidates[oid] = "high_margin"
+                        count += 1
+                if count >= limit:
+                    break
 
-            # --- Strategy 5: Tier upgrade ---
+            # --- Strategy 5: Tier upgrade within customer's top categories ---
             # Offer products where customer typically buys at tier1/tier2
             # and could save by buying more
             limit = CANDIDATE_STRATEGY_LIMITS["tier_upgrade"]
@@ -246,15 +275,19 @@ def generate_candidate_pool(conn, run_date):
                 # Customers with low tier3 usage are good targets
                 if tier_info.get("tier3_purchase_ratio", 0) < 0.3:
                     count = 0
-                    for oid in active_offer_set:
+                    cats_for_tier = top_cats if top_cats else list(cat_to_offers.keys())
+                    for cat in cats_for_tier:
+                        for oid in cat_to_offers.get(cat, []):
+                            if count >= limit:
+                                break
+                            if oid not in candidates and _is_eligible(
+                                oid, bt, sub, store, ltier,
+                                offer_store_scope, offer_bt_scope, offer_sub_scope, offer_lt_scope
+                            ):
+                                candidates[oid] = "tier_upgrade"
+                                count += 1
                         if count >= limit:
                             break
-                        if oid not in candidates and _is_eligible(
-                            oid, bt, sub, store, ltier,
-                            offer_store_scope, offer_bt_scope, offer_sub_scope, offer_lt_scope
-                        ):
-                            candidates[oid] = "tier_upgrade"
-                            count += 1
 
             # --- Strategy 6: Cross-sell ---
             # Offer categories the customer hasn't purchased

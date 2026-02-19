@@ -50,6 +50,8 @@ app.add_middleware(
 class OfferRecommendation(BaseModel):
     offer_id: int
     product_id: int
+    product_name: str
+    subcategory: Optional[str] = None
     category: str
     brand: str
     offer_type: str
@@ -172,6 +174,8 @@ def get_recommendations(
             r.score,
             r.rank,
             o.product_id,
+            p.name,
+            p.subcategory,
             p.category,
             p.brand,
             o.offer_type,
@@ -199,13 +203,15 @@ def get_recommendations(
             score=round(row[1], 4),
             rank=row[2],
             product_id=row[3],
-            category=row[4],
-            brand=row[5],
-            offer_type=row[6],
-            discount_value=row[7],
-            expiry_date=row[8],
-            tier1_price=row[9],
-            campaign_type=row[10],
+            product_name=row[4],
+            subcategory=row[5],
+            category=row[6],
+            brand=row[7],
+            offer_type=row[8],
+            discount_value=row[9],
+            expiry_date=row[10],
+            tier1_price=row[11],
+            campaign_type=row[12],
         )
         for row in rows
     ]
@@ -455,6 +461,20 @@ def simulate_week(conn=Depends(get_db)):
         "run_date": final_date,
         "results": all_results,
     }
+
+
+@app.get("/pipeline/behavior/latest")
+def get_behavior_summary(conn=Depends(get_db)):
+    """Latest behavior simulation summary."""
+    row = conn.execute("""
+        SELECT run_date, metadata FROM pipeline_runs
+        WHERE step = 'behavior' AND status = 'completed'
+        ORDER BY run_id DESC LIMIT 1
+    """).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="No behavior simulation available")
+    metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+    return {"run_date": row["run_date"], **metadata}
 
 
 @app.get("/drift/latest")

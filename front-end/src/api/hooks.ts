@@ -10,6 +10,7 @@ import type {
   DriftReport,
   DbStats,
   PipelineSimulateResponse,
+  BehaviorSummary,
 } from '../types/metro';
 
 // ---- Customer ----
@@ -96,6 +97,7 @@ export function useSimulateDay() {
       qc.invalidateQueries({ queryKey: ['recommendations'] });
       qc.invalidateQueries({ queryKey: ['drift'] });
       qc.invalidateQueries({ queryKey: ['metrics'] });
+      qc.invalidateQueries({ queryKey: ['behavior'] });
     },
   });
 }
@@ -111,7 +113,18 @@ export function useSimulateWeek() {
       qc.invalidateQueries({ queryKey: ['recommendations'] });
       qc.invalidateQueries({ queryKey: ['drift'] });
       qc.invalidateQueries({ queryKey: ['metrics'] });
+      qc.invalidateQueries({ queryKey: ['behavior'] });
     },
+  });
+}
+
+// ---- Behavior ----
+
+export function useBehaviorSummary() {
+  return useQuery({
+    queryKey: ['behavior', 'latest'],
+    queryFn: () => get<BehaviorSummary>('/pipeline/behavior/latest'),
+    retry: false,
   });
 }
 
