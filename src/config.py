@@ -748,6 +748,38 @@ CHANNEL_DIST = {
 # ---------------------------------------------------------------------------
 # Candidate generation
 # ---------------------------------------------------------------------------
+
+# Cold-start affinity threshold: only seed top_cats from subtypes with clear positive signal
+COLD_START_AFFINITY_THRESHOLD = 1.5
+
+# Per-subtype category gate for cross-sell strategy.
+# Only offer categories within the gate. None means no gate (all categories plausible).
+SUBTYPE_CATEGORY_GATE = {
+    # SCO
+    "office":            {"office_supplies", "coffee_tea", "beverages_non_alcoholic", "cleaning_detergents", "paper_packaging", "confectionery_snacks", "personal_care_hygiene"},
+    "hospital_clinic":   {"cleaning_detergents", "personal_care_hygiene", "paper_packaging", "beverages_non_alcoholic", "office_supplies"},
+    "school_university": {"office_supplies", "cleaning_detergents", "beverages_non_alcoholic", "confectionery_snacks", "paper_packaging", "grocery_staples"},
+    "canteen":           {"meat_poultry", "dairy_eggs", "fruits_vegetables", "frozen_foods", "grocery_staples", "cleaning_detergents", "paper_packaging", "condiments_spices"},
+    "other_org":         {"office_supplies", "cleaning_detergents", "beverages_non_alcoholic", "paper_packaging", "coffee_tea"},
+    # Freelancer
+    "independent_pro":   {"office_supplies", "coffee_tea", "confectionery_snacks", "beverages_non_alcoholic", "cleaning_detergents"},
+    "small_business":    {"office_supplies", "cleaning_detergents", "beverages_non_alcoholic", "paper_packaging", "coffee_tea", "personal_care_hygiene"},
+    # Trader
+    "grocery_store":     {"grocery_staples", "beverages_non_alcoholic", "confectionery_snacks", "dairy_eggs", "cleaning_detergents", "personal_care_hygiene", "beverages_alcoholic", "frozen_foods"},
+    "convenience":       {"beverages_non_alcoholic", "confectionery_snacks", "beverages_alcoholic", "grocery_staples", "dairy_eggs", "bakery_pastry"},
+    "specialty_food":    {"deli_charcuterie", "dairy_eggs", "beverages_alcoholic", "confectionery_snacks", "coffee_tea", "condiments_spices"},
+    "liquor_store":      {"beverages_alcoholic", "beverages_non_alcoholic", "confectionery_snacks", "coffee_tea"},
+    "general_retail":    {"household_goods", "cleaning_detergents", "personal_care_hygiene", "grocery_staples", "confectionery_snacks", "beverages_non_alcoholic"},
+    # HoReCa — None means no gate, all categories are plausible
+    "restaurant":        None,
+    "cafe_bar":          None,
+    "hotel":             None,
+    "catering":          None,
+    "fast_food":         None,
+    "bakery_pastry":     None,
+    "ghost_kitchen":     None,
+}
+
 CANDIDATE_POOL_SIZE = 200
 CANDIDATE_STRATEGY_LIMITS = {
     "category_affinity": 60,
@@ -798,6 +830,7 @@ FEATURE_COLUMNS = [
     "discount_depth_vs_usual",
     "price_sensitivity_match",
     "business_type_match",
+    "subtype_category_affinity",  # structural segment-category fit: 0.02=wrong, 1.0=perfect
 ]
 
 # Ordinal encoding for business_type (used in train_ranker + score_ranker)

@@ -64,10 +64,15 @@ export default function WelcomeBar({ customerId }: Props) {
             <span className="font-semibold text-metro-blue">{Math.round(f.avg_basket_size)}</span>
             <span className="text-metro-gray-500">articole/cos mediu</span>
           </div>
-          {f.recency_days !== undefined && (
+          {f.recency_days !== undefined && f.recency_days < 200 && (
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-metro-blue">{Math.round(f.recency_days)}</span>
               <span className="text-metro-gray-500">zile de la ultima comanda</span>
+            </div>
+          )}
+          {f.recency_days !== undefined && f.recency_days >= 200 && (
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-metro-gray-400">Client nou</span>
             </div>
           )}
         </div>

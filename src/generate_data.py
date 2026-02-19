@@ -32,7 +32,7 @@ from src.config import (
     SEED, N_CUSTOMERS, N_PRODUCTS, N_OFFERS, N_STORES, HISTORY_DAYS,
     TARGET_ORDER_ITEMS, TARGET_IMPRESSIONS, TARGET_REDEMPTION_RATE,
     BUSINESS_TYPE_DIST, BUSINESS_SUBTYPE_DIST, LOYALTY_TIERS,
-    CATEGORY_NAMES, CATEGORY_WEIGHTS, SUBCATEGORIES,
+    CATEGORIES, CATEGORY_NAMES, CATEGORY_WEIGHTS, SUBCATEGORIES,
     CATEGORY_PRICE_RANGE, CATEGORY_MARGIN_RANGE, CATEGORY_SHELF_LIFE,
     FRESH_CATEGORIES, BUSINESS_PROFILES, BUSINESS_CATEGORY_AFFINITY,
     METRO_OWN_BRANDS, OWN_BRAND_PROBABILITY, ROMANIAN_BRANDS,
@@ -647,17 +647,47 @@ class MetroDataGenerator:
     def _generate_offers(self, conn):
         products = self._products_df
 
-        # Prefer products in popular categories for offers
-        pop_cats = CATEGORY_NAMES[:10]
-        pop_mask = products["category"].isin(pop_cats)
-        offer_product_pool = products.loc[pop_mask, "product_id"].values
+        # Allocate offers across ALL 21 categories proportionally, with a minimum
+        # of 2 per category so non-food (office, electronics, cleaning…) always appears.
+        cat_weights = dict(CATEGORIES)
+        total_weight = sum(cat_weights.values())
+        n_remaining = self.n_offers
 
-        if len(offer_product_pool) < self.n_offers:
-            offer_product_pool = products["product_id"].values
+        # Floor: 2 guaranteed per category
+        MIN_PER_CAT = 2
+        allocation: dict[str, int] = {cat: MIN_PER_CAT for cat in CATEGORY_NAMES}
+        n_remaining -= MIN_PER_CAT * len(CATEGORY_NAMES)
 
-        chosen_products = self.rng.choice(
-            offer_product_pool, size=self.n_offers, replace=False
-        )
+        # Distribute remainder proportionally by weight
+        if n_remaining > 0:
+            extra_raw = {cat: (cat_weights[cat] / total_weight) * n_remaining
+                         for cat in CATEGORY_NAMES}
+            # Integer part first
+            extra_int = {cat: int(v) for cat, v in extra_raw.items()}
+            distributed = sum(extra_int.values())
+            leftover = n_remaining - distributed
+            # Assign leftover by largest fractional parts
+            fracs = sorted(CATEGORY_NAMES, key=lambda c: -(extra_raw[c] - extra_int[c]))
+            for cat in fracs[:leftover]:
+                extra_int[cat] += 1
+            for cat, n in extra_int.items():
+                allocation[cat] += n
+
+        # Sample products per category
+        chosen_products_list = []
+        for cat in CATEGORY_NAMES:
+            n_cat = allocation[cat]
+            cat_prods = products.loc[products["category"] == cat, "product_id"].values
+            if len(cat_prods) == 0:
+                continue
+            n_sample = min(n_cat, len(cat_prods))
+            chosen_products_list.extend(
+                self.rng.choice(cat_prods, size=n_sample, replace=False).tolist()
+            )
+
+        # Shuffle so categories aren't grouped by offer_id
+        self.rng.shuffle(chosen_products_list)
+        chosen_products = chosen_products_list[: self.n_offers]
 
         btypes = list(BUSINESS_TYPE_DIST.keys())
         offer_types = list(OFFER_TYPE_DIST.keys())
@@ -1120,6 +1150,8 @@ class MetroDataGenerator:
             logger.info(f"    Tier {row[0]}: {row[1]:>10,}")
 
         import os
+        # Force WAL checkpoint so the main DB file is written
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         db_size = os.path.getsize(str(DB_PATH)) / (1024 * 1024)
         logger.info(f"  {'Database size':20s}: {db_size:>10.1f} MB")
         logger.info("=" * 50)

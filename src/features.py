@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
-from src.config import CATEGORY_NAMES, BUSINESS_PROFILES, FEATURE_COLUMNS, FRESH_CATEGORIES
+from src.config import CATEGORY_NAMES, BUSINESS_PROFILES, FEATURE_COLUMNS, FRESH_CATEGORIES, BUSINESS_CATEGORY_AFFINITY
 
 logger = logging.getLogger(__name__)
 
@@ -340,7 +340,7 @@ def build_interaction_features(conn, pairs_df, reference_date):
             "customer_id", "offer_id", "bought_product_before",
             "days_since_last_cat_purchase", "category_affinity_score",
             "discount_depth_vs_usual", "price_sensitivity_match",
-            "business_type_match",
+            "business_type_match", "subtype_category_affinity",
         ])
 
     logger.info(f"Computing interaction features for {len(pairs_df):,} pairs...")
@@ -406,10 +406,19 @@ def build_interaction_features(conn, pairs_df, reference_date):
 
     # 5) customer features for discount comparison and business type
     cust_feats = pd.read_sql(
-        "SELECT customer_id, avg_discount_depth, business_type FROM customer_features",
+        "SELECT customer_id, avg_discount_depth, business_type, business_subtype FROM customer_features",
         conn,
     )
     cust_feat_map = cust_feats.set_index("customer_id")
+
+    # 6) customer business_subtype for structural affinity feature
+    cust_subtype_map = cust_feats.set_index("customer_id")["business_subtype"].to_dict()
+
+    # Pre-compute per-subtype max affinity for normalization
+    subtype_max_aff = {
+        sub: max(aff_map.values()) if aff_map else 1.0
+        for sub, aff_map in BUSINESS_CATEGORY_AFFINITY.items()
+    }
 
     # ---- Compute features ----
     from datetime import date as dt_date
@@ -427,6 +436,7 @@ def build_interaction_features(conn, pairs_df, reference_date):
                 "bought_product_before": 0, "days_since_last_cat_purchase": 999,
                 "category_affinity_score": 0.0, "discount_depth_vs_usual": 0.0,
                 "price_sensitivity_match": 0.0, "business_type_match": 0.0,
+                "subtype_category_affinity": 0.5,
             })
             continue
 
@@ -491,6 +501,14 @@ def build_interaction_features(conn, pairs_df, reference_date):
         if pd.notna(bt_scope) and bt_scope:
             bt_match = 1.0 if business_type in str(bt_scope).split(",") else 0.0
 
+        # subtype_category_affinity: structural segment-category fit from config knowledge
+        # 1.0 = perfect fit (office + office_supplies), ~0.02 = wrong fit (office + meat)
+        sub_ = cust_subtype_map.get(cid, "restaurant")
+        sub_aff_map_ = BUSINESS_CATEGORY_AFFINITY.get(sub_, {})
+        max_aff_ = subtype_max_aff.get(sub_, 1.0)
+        raw_aff_ = sub_aff_map_.get(cat, 1.0)  # 1.0 = neutral if category not in map
+        subtype_cat_affinity = round(raw_aff_ / max(max_aff_, 0.001), 4)
+
         results.append({
             "customer_id": cid,
             "offer_id": oid,
@@ -500,6 +518,7 @@ def build_interaction_features(conn, pairs_df, reference_date):
             "discount_depth_vs_usual": round(depth_vs_usual, 4),
             "price_sensitivity_match": round(psm, 4),
             "business_type_match": bt_match,
+            "subtype_category_affinity": subtype_cat_affinity,
         })
 
     df = pd.DataFrame(results)

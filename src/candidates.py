@@ -23,7 +23,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import numpy as np
 
-from src.config import CANDIDATE_POOL_SIZE, CANDIDATE_STRATEGY_LIMITS
+from src.config import (
+    CANDIDATE_POOL_SIZE, CANDIDATE_STRATEGY_LIMITS,
+    BUSINESS_CATEGORY_AFFINITY, COLD_START_AFFINITY_THRESHOLD, SUBTYPE_CATEGORY_GATE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +197,12 @@ def generate_candidate_pool(conn, run_date):
             store = str(cust["home_store_id"])
             ltier = cust["loyalty_tier"]
             top_cats = cust_top_cats.get(cid, [])
+            # Cold-start / inactive: seed top_cats from structural subtype knowledge
+            if len(top_cats) < 2:
+                sub_aff = BUSINESS_CATEGORY_AFFINITY.get(sub, {})
+                cold_cats = [cat for cat, score in sub_aff.items()
+                             if score >= COLD_START_AFFINITY_THRESHOLD]
+                top_cats = sorted(cold_cats, key=lambda c: -sub_aff[c])[:5]
             past_prods = cust_products.get(cid, set())
             purchased_cats = cust_purchased_cats.get(cid, set())
 
@@ -290,10 +299,12 @@ def generate_candidate_pool(conn, run_date):
                             break
 
             # --- Strategy 6: Cross-sell ---
-            # Offer categories the customer hasn't purchased
+            # Offer categories the customer hasn't purchased, gated to subtype-relevant ones
             limit = CANDIDATE_STRATEGY_LIMITS["cross_sell"]
             count = 0
-            for cat in all_categories:
+            gate = SUBTYPE_CATEGORY_GATE.get(sub)  # None = no gate (HoReCa)
+            cross_sell_cats = all_categories if gate is None else [c for c in all_categories if c in gate]
+            for cat in cross_sell_cats:
                 if count >= limit:
                     break
                 if cat not in purchased_cats:

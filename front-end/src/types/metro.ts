@@ -141,6 +141,17 @@ export interface MetricsData {
   metrics: Record<string, number>;
 }
 
+export interface MetricsHistoryEntry {
+  run_date: string;
+  ndcg_at_k?: number;
+  precision_at_k?: number;
+  recall_at_k?: number;
+  mrr?: number;
+  redemption_rate_at_k?: number;
+  ndcg_lift?: number;
+  [key: string]: number | string | undefined;
+}
+
 export interface PipelineSimulateResponse {
   status: string;
   run_date: string;

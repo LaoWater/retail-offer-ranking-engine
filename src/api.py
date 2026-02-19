@@ -347,7 +347,7 @@ def get_product_detail(product_id: int, conn=Depends(get_db)):
 
 @app.get("/metrics")
 def get_latest_metrics(conn=Depends(get_db)):
-    """Get metrics from the latest pipeline run."""
+    """Get metrics from the latest pipeline run — returns parsed dict, not string."""
     row = conn.execute("""
         SELECT run_date, metadata
         FROM pipeline_runs
@@ -359,7 +359,26 @@ def get_latest_metrics(conn=Depends(get_db)):
     if row is None:
         raise HTTPException(status_code=404, detail="No evaluation metrics available")
 
-    return {"run_date": row[0], "metadata": row[1]}
+    metrics = json.loads(row[1]) if row[1] else {}
+    return {"run_date": row[0], "metrics": metrics}
+
+
+@app.get("/metrics/history")
+def get_metrics_history(days: int = Query(30, le=90), conn=Depends(get_db)):
+    """Get evaluation metrics history for the last N days — one row per day."""
+    rows = conn.execute("""
+        SELECT run_date, metadata
+        FROM pipeline_runs
+        WHERE step = 'evaluate' AND status = 'completed'
+        ORDER BY run_date ASC
+        LIMIT ?
+    """, (days,)).fetchall()
+
+    result = []
+    for row in rows:
+        metrics = json.loads(row[1]) if row[1] else {}
+        result.append({"run_date": row[0], **metrics})
+    return result
 
 
 @app.get("/stats")
@@ -401,6 +420,115 @@ def get_pipeline_runs(
     ).fetchall()
 
     return [dict(r) for r in rows]
+
+
+@app.post("/pipeline/simulate-behavior")
+def simulate_behavior_only(conn=Depends(get_db)):
+    """
+    Run ONLY the customer behavior simulation for the next date.
+    Generates orders, impressions, redemptions — no ML steps.
+    Use this to accumulate customer activity before running the ML pipeline.
+    """
+    row = conn.execute("SELECT MAX(run_date) FROM pipeline_runs").fetchone()
+    last_date_str = row[0] if row and row[0] else None
+    conn.close()
+
+    if last_date_str:
+        last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
+        next_date = last_date + timedelta(days=1)
+    else:
+        next_date = date.today()
+
+    run_date = next_date.strftime("%Y-%m-%d")
+
+    from src.simulate_day_behavior import simulate_day as sim_behavior
+    from src.db import get_connection as _gc
+    from src.daily_run import _log_pipeline_run
+    import time
+
+    conn2 = _gc()
+    _log_pipeline_run(conn2, run_date, "behavior", "started")
+    t0 = time.time()
+    try:
+        summary = sim_behavior(conn2, run_date)
+        duration = time.time() - t0
+        _log_pipeline_run(conn2, run_date, "behavior", "completed", duration, json.dumps(summary))
+        conn2.close()
+        return {"status": "completed", "run_date": run_date, "summary": summary}
+    except Exception as e:
+        duration = time.time() - t0
+        _log_pipeline_run(conn2, run_date, "behavior", "failed", duration, str(e))
+        conn2.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pipeline/run-ml")
+def run_ml_pipeline(conn=Depends(get_db)):
+    """
+    Run ONLY the ML pipeline steps (features→model→candidates→scoring→drift→eval).
+    Assumes customer behavior has already been simulated for today.
+    """
+    row = conn.execute("""
+        SELECT run_date FROM pipeline_runs
+        WHERE step = 'behavior' AND status = 'completed'
+        ORDER BY run_id DESC LIMIT 1
+    """).fetchone()
+    conn.close()
+
+    if row is None:
+        raise HTTPException(status_code=400, detail="No behavior simulation found. Run simulate-behavior first.")
+
+    run_date = row[0]
+
+    from src.db import get_connection as _gc
+    from src.features import build_customer_features, build_offer_features
+    from src.candidates import generate_candidate_pool
+    from src.train_ranker import train_ranker, load_model
+    from src.score_ranker import score_candidates
+    from src.drift import check_drift, should_retrain_from_drift
+    from src.evaluate import compute_offline_metrics
+    from src.daily_run import _run_step, _log_pipeline_run
+    from src.config import RETRAIN_DAY_OF_WEEK, MODELS_DIR
+    import time
+
+    conn2 = _gc()
+    results = {}
+
+    _run_step(conn2, run_date, "features",
+              lambda: (build_customer_features(conn2, run_date), build_offer_features(conn2, run_date)),
+              results)
+
+    model = _run_step(conn2, run_date, "model", lambda: _load_or_train(conn2, run_date), results)
+
+    if model is None:
+        conn2.close()
+        raise HTTPException(status_code=500, detail="Model training failed")
+
+    _run_step(conn2, run_date, "candidates", lambda: generate_candidate_pool(conn2, run_date), results)
+    _run_step(conn2, run_date, "scoring", lambda: score_candidates(model, run_date, conn2), results)
+    _run_step(conn2, run_date, "drift", lambda: check_drift(conn2, run_date), results)
+    _run_step(conn2, run_date, "evaluate", lambda: compute_offline_metrics(conn2, run_date), results)
+
+    conn2.close()
+    return {
+        "status": "completed",
+        "run_date": run_date,
+        "results": {k: {"status": v.get("status"), "duration": v.get("duration", 0)} for k, v in results.items()},
+    }
+
+
+def _load_or_train(conn, run_date):
+    from src.train_ranker import train_ranker, load_model
+    from src.config import RETRAIN_DAY_OF_WEEK, MODELS_DIR
+    from datetime import datetime
+    from pathlib import Path
+    dt = datetime.strptime(run_date, "%Y-%m-%d")
+    artifact_path = Path(MODELS_DIR) / "ranker_latest.pkl"
+    if dt.weekday() == RETRAIN_DAY_OF_WEEK or not artifact_path.exists():
+        model, _ = train_ranker(conn, run_date)
+        return model
+    model, _ = load_model()
+    return model
 
 
 @app.post("/pipeline/simulate-day")

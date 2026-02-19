@@ -11,6 +11,8 @@ import type {
   DbStats,
   PipelineSimulateResponse,
   BehaviorSummary,
+  MetricsData,
+  MetricsHistoryEntry,
 } from '../types/metro';
 
 // ---- Customer ----
@@ -86,19 +88,40 @@ export function usePipelineRuns(limit = 10) {
   });
 }
 
+const INVALIDATE_ALL = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['pipeline'] });
+  qc.invalidateQueries({ queryKey: ['health'] });
+  qc.invalidateQueries({ queryKey: ['stats'] });
+  qc.invalidateQueries({ queryKey: ['recommendations'] });
+  qc.invalidateQueries({ queryKey: ['drift'] });
+  qc.invalidateQueries({ queryKey: ['metrics'] });
+  qc.invalidateQueries({ queryKey: ['behavior'] });
+};
+
+/** Simulate customer behavior ONLY (orders, impressions, redemptions). No ML. */
+export function useSimulateBehavior() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<{ status: string; run_date: string; summary: BehaviorSummary }>('/pipeline/simulate-behavior'),
+    onSuccess: () => INVALIDATE_ALL(qc),
+  });
+}
+
+/** Run ML pipeline ONLY (features → model → candidates → scoring → drift → eval). */
+export function useRunMlPipeline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<PipelineSimulateResponse>('/pipeline/run-ml'),
+    onSuccess: () => INVALIDATE_ALL(qc),
+  });
+}
+
+/** Legacy: simulate behavior + full ML pipeline in one shot. */
 export function useSimulateDay() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => post<PipelineSimulateResponse>('/pipeline/simulate-day'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['pipeline'] });
-      qc.invalidateQueries({ queryKey: ['health'] });
-      qc.invalidateQueries({ queryKey: ['stats'] });
-      qc.invalidateQueries({ queryKey: ['recommendations'] });
-      qc.invalidateQueries({ queryKey: ['drift'] });
-      qc.invalidateQueries({ queryKey: ['metrics'] });
-      qc.invalidateQueries({ queryKey: ['behavior'] });
-    },
+    onSuccess: () => INVALIDATE_ALL(qc),
   });
 }
 
@@ -106,15 +129,7 @@ export function useSimulateWeek() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => post<PipelineSimulateResponse>('/pipeline/simulate-week'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['pipeline'] });
-      qc.invalidateQueries({ queryKey: ['health'] });
-      qc.invalidateQueries({ queryKey: ['stats'] });
-      qc.invalidateQueries({ queryKey: ['recommendations'] });
-      qc.invalidateQueries({ queryKey: ['drift'] });
-      qc.invalidateQueries({ queryKey: ['metrics'] });
-      qc.invalidateQueries({ queryKey: ['behavior'] });
-    },
+    onSuccess: () => INVALIDATE_ALL(qc),
   });
 }
 
@@ -139,9 +154,19 @@ export function useDriftLatest() {
 
 // ---- Metrics ----
 
+/** Latest evaluation metrics — returns parsed dict (not raw string). */
 export function useMetrics() {
   return useQuery({
     queryKey: ['metrics'],
-    queryFn: () => get<{ run_date: string; metadata: string }>('/metrics'),
+    queryFn: () => get<MetricsData>('/metrics'),
+    retry: false,
+  });
+}
+
+/** Historical metrics for the last N days — for trend charts. */
+export function useMetricsHistory(days = 30) {
+  return useQuery({
+    queryKey: ['metrics', 'history', days],
+    queryFn: () => get<MetricsHistoryEntry[]>(`/metrics/history?days=${days}`),
   });
 }
