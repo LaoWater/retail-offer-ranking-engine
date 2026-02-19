@@ -71,20 +71,7 @@ Synthetic Data (50K customers, 10K products, 200 offers)
     → API serving + Interactive dashboard
 ```
 
-## Quickstart
 
-```bash
-git clone https://github.com/LaoWater/retail-offer-ranking-engine.git
-cd retail-offer-ranking-engine
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-
-python -m src.generate_data          # Generate synthetic Metro Romania data
-python -m src.daily_run --date 2026-02-17  # Run full pipeline
-uvicorn src.api:app --port 8000      # Start API (docs at /docs)
-streamlit run src/dashboard.py       # Launch dashboard
-pytest tests/ -v                     # Run tests
-```
 
 ## Pipeline Components
 
@@ -130,6 +117,22 @@ Target: +5-10% NDCG@10 over Phase 1.
 ## Tech Stack
 
 Python | scikit-learn | LightGBM | SQLite | FastAPI | Streamlit | Plotly | scipy
+
+
+## Quickstart
+
+```bash
+git clone https://github.com/LaoWater/retail-offer-ranking-engine.git
+cd retail-offer-ranking-engine
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+python -m src.generate_data          # Generate synthetic Metro Romania data
+python -m src.daily_run --date 2026-02-17  # Run full pipeline
+uvicorn src.api:app --port 8000      # Start API (docs at /docs)
+streamlit run src/dashboard.py       # Launch dashboard
+pytest tests/ -v                     # Run tests
+```
 
 ## Sources & References
 
