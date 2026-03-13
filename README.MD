@@ -1,4 +1,4 @@
-# Metro Romania — Personalized Offers Recommender
+Personalized Offers Recommender
 
 A production-realistic personalized offer recommendation system replicating **Metro Cash & Carry Romania's** database, tiered pricing philosophy, and ML recommendation pipeline.
 
